@@ -1,11 +1,9 @@
-import json
-from pathlib import Path
-
 import joblib
 import numpy as np
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
+from pathlib import Path
 
 st.set_page_config(
     page_title="GenomicAI - RA Prediction",
@@ -20,6 +18,7 @@ BASE_DIR = Path(".")
 MODELS_DIR = BASE_DIR / "models"
 DATA_DIR = BASE_DIR / "data"
 
+
 # ==============================
 # Loaders
 # ==============================
@@ -29,6 +28,7 @@ def load_artifact():
         MODELS_DIR / "xgboost_model.joblib",
         BASE_DIR / "xgboost_model.joblib",
     ]
+
     for path in candidates:
         if path.exists():
             try:
@@ -36,6 +36,7 @@ def load_artifact():
                 return artifact, path, None
             except Exception as e:
                 return None, path, str(e)
+
     return None, None, "xgboost_model.joblib was not found."
 
 
@@ -45,6 +46,7 @@ def load_demo_samples():
         DATA_DIR / "demo_samples.csv",
         BASE_DIR / "demo_samples.csv",
     ]
+
     for path in candidates:
         if path.exists():
             try:
@@ -52,17 +54,24 @@ def load_demo_samples():
                 return df, path, None
             except Exception as e:
                 return None, path, str(e)
+
     return None, None, "demo_samples.csv was not found."
 
 
+# ==============================
+# Helper functions
+# ==============================
 def normalize_expected_label(value):
     if pd.isna(value):
         return None
+
     text = str(value).strip().lower()
-    if text in {"1", "ra", "case", "patient"}:
+
+    if text in {"1", "ra", "case", "patient", "positive"}:
         return 1
-    if text in {"0", "control", "healthy", "normal"}:
+    if text in {"0", "control", "healthy", "normal", "negative"}:
         return 0
+
     return None
 
 
@@ -91,17 +100,30 @@ def run_prediction(artifact, X):
 
 
 def build_template(feature_columns):
-    template = pd.DataFrame(columns=["SampleName"] + feature_columns)
-    return template
+    return pd.DataFrame(columns=["SampleName"] + feature_columns)
 
 
+def plot_feature_reduction(feature_count):
+    labels = ["Raw SNPs", "Refined RA SNPs", "Final Additive Features"]
+    values = [531689, 313, feature_count]
+
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.bar(labels, values)
+    ax.set_title("Feature Reduction Through the Pipeline")
+    ax.set_ylabel("Count")
+    st.pyplot(fig)
+
+
+# ==============================
+# Page functions
+# ==============================
 def show_home_page(feature_count):
     st.title("Rheumatoid Arthritis Genomic Prediction App")
 
     st.write(
-        "This application presents the final deployment view of the rheumatoid arthritis "
-        "genomic pipeline. The goal of the project is to predict RA status from genotype data "
-        "after a multi-step preprocessing and refinement workflow."
+        "This application presents the deployment view of the rheumatoid arthritis genomic pipeline. "
+        "The main goal of the project is to predict RA status from genotype data after a structured "
+        "multi-step preprocessing and refinement workflow."
     )
 
     col1, col2, col3, col4 = st.columns(4)
@@ -112,20 +134,20 @@ def show_home_page(feature_count):
 
     st.subheader("Problem Statement")
     st.write(
-        "Raw genomic data are extremely high-dimensional and not directly suitable for robust "
-        "machine learning. The project addresses this by transforming large raw NARAC genotype files "
-        "into a smaller, biologically informed, technically clean feature set for RA prediction."
+        "Raw genomic data are extremely high-dimensional and are not directly suitable for reliable "
+        "machine learning. This project solves that problem by transforming large raw NARAC genotype "
+        "files into a smaller, biologically informed, technically clean feature set for RA prediction."
     )
 
     st.subheader("How the Project Solves the Problem")
     st.markdown(
         """
-        1. **Raw genotype ingestion** from chromosome-wise PED/MAP files.  
-        2. **Discrepancy detection and validation** to check structure, IDs, phenotype coding, sex coding, and genotype integrity.  
-        3. **RA SNP intersection and refinement** to keep SNPs that are biologically relevant and technically reliable.  
-        4. **Imputation** to resolve missing genotypes while preserving original observed calls.  
-        5. **Additive encoding (0/1/2)** to convert retained SNPs into ML-ready numerical features.  
-        6. **Modeling** using machine learning, where this deployed app uses one final XGBoost model only.
+        1. **Raw genotype ingestion** from chromosome-wise PED/MAP files  
+        2. **Discrepancy detection and validation** to check structure, IDs, phenotype coding, sex coding, and genotype integrity  
+        3. **RA SNP intersection and refinement** to retain SNPs that are biologically relevant and technically reliable  
+        4. **Imputation** to resolve missing genotypes while preserving original observed calls  
+        5. **Additive encoding (0/1/2)** to convert retained SNPs into machine-learning-ready numerical features  
+        6. **Final modeling** using one deployed **XGBoost** classifier
         """
     )
 
@@ -137,24 +159,17 @@ def show_home_page(feature_count):
         - No confidential dataset rows are displayed directly
         - Two testing modes:
           - predefined demo samples
-          - user-uploaded additive feature CSV
+          - user-uploaded additive CSV
         """
     )
 
     st.subheader("Why Additive Encoding?")
     st.write(
-        "The transformation stage retained 212 SNPs after filtering and encoded them as 0/1/2 "
-        "to represent major-homozygous, heterozygous, and minor-homozygous states in an "
-        "ML-ready additive format."
+        "After transformation and filtering, the retained SNPs are encoded as 0/1/2 to represent "
+        "genotype states in a compact machine-learning-ready format."
     )
 
-    fig, ax = plt.subplots(figsize=(7, 3))
-    labels = ["Raw SNPs", "RA Panel", "Final Additive"]
-    values = [531689, 313, feature_count]
-    ax.bar(labels, values)
-    ax.set_title("Feature Reduction Through the Pipeline")
-    ax.set_ylabel("Count")
-    st.pyplot(fig)
+    plot_feature_reduction(feature_count)
 
 
 def show_prediction_page(artifact):
@@ -176,9 +191,9 @@ def show_prediction_page(artifact):
         horizontal=True,
     )
 
-    # -------------------------------------------------
+    # --------------------------------------
     # Mode 1: Predefined demo samples
-    # -------------------------------------------------
+    # --------------------------------------
     if input_mode == "Predefined Demo Samples":
         demo_df, demo_path, demo_error = load_demo_samples()
 
@@ -188,8 +203,7 @@ def show_prediction_page(artifact):
                 "To use this mode, add data/demo_samples.csv to the repository."
             )
             st.info(
-                "Expected columns: DisplayName, ExpectedLabel, and all additive feature columns "
-                "required by the model."
+                "Expected columns: DisplayName, ExpectedLabel, and all additive feature columns required by the model."
             )
             return
 
@@ -198,6 +212,7 @@ def show_prediction_page(artifact):
             st.error(
                 f"The demo_samples.csv file is missing {len(required_missing)} required feature columns."
             )
+            st.write("First missing columns:", required_missing[:10])
             return
 
         name_col = "DisplayName" if "DisplayName" in demo_df.columns else None
@@ -205,7 +220,7 @@ def show_prediction_page(artifact):
 
         if name_col is None:
             demo_df = demo_df.copy()
-            demo_df["DisplayName"] = [f"Demo Sample {i+1}" for i in range(len(demo_df))]
+            demo_df["DisplayName"] = [f"Demo Sample {i + 1}" for i in range(len(demo_df))]
             name_col = "DisplayName"
 
         selected_name = st.selectbox(
@@ -241,9 +256,9 @@ def show_prediction_page(artifact):
                     else:
                         st.warning("Prediction does not match the expected group.")
 
-    # -------------------------------------------------
+    # --------------------------------------
     # Mode 2: Upload CSV
-    # -------------------------------------------------
+    # --------------------------------------
     else:
         st.subheader("Upload Requirements")
         st.write(
@@ -280,13 +295,12 @@ def show_prediction_page(artifact):
                 return
 
             X = uploaded_df[feature_columns].copy()
-
             pred, prob_ra = run_prediction(artifact, X)
 
             sample_names = (
                 uploaded_df["SampleName"].astype(str).tolist()
                 if "SampleName" in uploaded_df.columns
-                else [f"Uploaded Sample {i+1}" for i in range(len(uploaded_df))]
+                else [f"Uploaded Sample {i + 1}" for i in range(len(uploaded_df))]
             )
 
             results_df = pd.DataFrame({
@@ -295,7 +309,6 @@ def show_prediction_page(artifact):
                 "Predicted_RA_Probability": [round(float(x), 4) for x in prob_ra],
             })
 
-            # Optional true label comparison
             true_label_col = None
             for candidate in ["ExpectedLabel", "Phenotype", "TrueLabel"]:
                 if candidate in uploaded_df.columns:
@@ -321,61 +334,59 @@ def show_prediction_page(artifact):
             )
 
 
-def show_pipeline_page():
-    st.title("Pipeline and Methodology")
+def show_how_to_use_page(feature_count):
+    st.title("How to Use and Interpret Results")
 
-    st.subheader("1. Data Description")
+    st.subheader("Purpose of the App")
     st.write(
-        "The pipeline begins with chromosome-wise NARAC PED/MAP genotype files. "
-        "The dataset contains 2,062 individuals and approximately 531,689 autosomal SNPs."
+        "This application predicts rheumatoid arthritis status using one deployed "
+        "XGBoost model trained on additive-encoded genomic features."
     )
 
-    st.subheader("2. Discrepancy Detection")
-    st.write(
-        "Structural consistency, duplicate IDs, phenotype coding, sex coding, genotype token integrity, "
-        "and missingness patterns are checked before any downstream modeling."
+    st.subheader("Available Prediction Modes")
+    st.markdown(
+        """
+        **1. Predefined Demo Samples**  
+        Use one of the prepared demo samples to test the interface quickly.
+
+        **2. Upload CSV File**  
+        Upload your own additive-encoded input CSV file and the app will generate predictions.
+        """
     )
 
-    st.subheader("3. RA SNP Intersection and Refinement")
-    st.write(
-        "The project intersects NARAC SNPs with externally reported RA-associated SNPs to build "
-        "a biologically informed RA-focused panel. After refinement, the final panel contains 313 SNPs."
+    st.subheader("How to Read the Output")
+    st.markdown(
+        """
+        **Predicted Class**
+        - **RA** means the model predicts a rheumatoid arthritis pattern.
+        - **Control** means the model predicts a non-RA / healthy control pattern.
+
+        **Predicted RA Probability**
+        - This is the model confidence score for the RA class.
+        - A higher percentage means the model considers the sample more likely to belong to the RA group.
+        """
     )
 
-    st.subheader("4. Genotype Imputation")
+    st.subheader("CSV Upload Requirements")
     st.write(
-        "Missing genotypes are imputed using Beagle. A missing-only overlay is then applied so that "
-        "original non-missing genotype calls remain unchanged while only missing positions are replaced."
+        "The uploaded CSV file should contain the additive feature columns expected by the model. "
+        "You may upload one sample or multiple samples in the same file."
     )
 
-    st.subheader("5. Transformation and Additive Encoding")
-    st.write(
-        "The imputed genotype matrix is transformed into machine-learning-ready numerical features. "
-        "After filtering, 212 SNPs are retained and encoded in additive form as 0/1/2."
+    st.subheader("Important Note")
+    st.warning(
+        "This application is intended for research and demonstration purposes only. "
+        "It should not be used as a standalone medical diagnostic tool."
     )
 
-    st.subheader("6. Modeling")
-    st.write(
-        "The original notebook benchmarks multiple models using nested cross-validation and explainability analysis. "
-        "For deployment, this application uses one final XGBoost model trained on the additive encoding only."
+    st.subheader("Current Deployment Setup")
+    st.markdown(
+        f"""
+        - One deployed model: **XGBoost**
+        - One deployed encoding: **Additive (0/1/2)**
+        - Feature count used by the model: **{feature_count}**
+        """
     )
-
-    fig, ax = plt.subplots(figsize=(8, 4))
-    steps = [
-        "Raw PED/MAP",
-        "Validation",
-        "RA SNP Intersection",
-        "Imputation",
-        "Additive Encoding",
-        "XGBoost Deployment"
-    ]
-    y = [1, 1, 1, 1, 1, 1]
-    ax.plot(range(len(steps)), y, marker="o")
-    ax.set_xticks(range(len(steps)))
-    ax.set_xticklabels(steps, rotation=25, ha="right")
-    ax.set_yticks([])
-    ax.set_title("Project Flow")
-    st.pyplot(fig)
 
 
 # ==============================
@@ -386,7 +397,7 @@ artifact, artifact_path, artifact_error = load_artifact()
 st.sidebar.title("GenomicAI Navigation")
 page = st.sidebar.radio(
     "Select a page",
-    ["Home", "Prediction Center", "Pipeline and Methodology"]
+    ["Home", "Prediction Center", "How to Use"]
 )
 
 st.sidebar.markdown("---")
@@ -412,5 +423,6 @@ elif page == "Prediction Center":
     else:
         show_prediction_page(artifact)
 
-elif page == "Pipeline and Methodology":
-    show_pipeline_page()
+elif page == "How to Use":
+    feature_count = len(artifact.get("feature_columns", [])) if artifact is not None else 0
+    show_how_to_use_page(feature_count)
