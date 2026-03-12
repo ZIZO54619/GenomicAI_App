@@ -2,7 +2,6 @@ import joblib
 import numpy as np
 import pandas as pd
 import streamlit as st
-import matplotlib.pyplot as plt
 from pathlib import Path
 
 st.set_page_config(
@@ -103,27 +102,17 @@ def build_template(feature_columns):
     return pd.DataFrame(columns=["SampleName"] + feature_columns)
 
 
-def plot_feature_reduction(feature_count):
-    labels = ["Raw SNPs", "Refined RA SNPs", "Final Additive Features"]
-    values = [531689, 313, feature_count]
-
-    fig, ax = plt.subplots(figsize=(8, 4))
-    ax.bar(labels, values)
-    ax.set_title("Feature Reduction Through the Pipeline")
-    ax.set_ylabel("Count")
-    st.pyplot(fig)
-
-
 # ==============================
 # Page functions
 # ==============================
 def show_home_page(feature_count):
-    st.title("Rheumatoid Arthritis Genomic Prediction App")
+    st.title("GenomicAI: AI-Based Prediction of Rheumatoid Arthritis")
 
     st.write(
-        "This application presents the deployment view of the rheumatoid arthritis genomic pipeline. "
-        "The main goal of the project is to predict RA status from genotype data after a structured "
-        "multi-step preprocessing and refinement workflow."
+        "GenomicAI is a healthcare technology project that uses artificial intelligence "
+        "and genomic data to support the early prediction of Rheumatoid Arthritis (RA). "
+        "The goal of the project is to help identify individuals with higher genetic "
+        "susceptibility before clear clinical symptoms appear."
     )
 
     col1, col2, col3, col4 = st.columns(4)
@@ -132,52 +121,57 @@ def show_home_page(feature_count):
     col3.metric("Refined RA SNP Panel", "313")
     col4.metric("Final Additive Features", str(feature_count))
 
-    st.subheader("Problem Statement")
+    st.subheader("The Problem")
     st.write(
-        "Raw genomic data are extremely high-dimensional and are not directly suitable for reliable "
-        "machine learning. This project solves that problem by transforming large raw NARAC genotype "
-        "files into a smaller, biologically informed, technically clean feature set for RA prediction."
+        "Rheumatoid Arthritis is a chronic autoimmune disease that may progress silently "
+        "before clear clinical signs appear. Delayed diagnosis can lead to irreversible "
+        "joint damage, disability, and increased treatment costs. Traditional diagnosis "
+        "often depends on symptoms and laboratory findings that may appear only after the "
+        "disease has already progressed."
     )
 
-    st.subheader("How the Project Solves the Problem")
-    st.markdown(
-        """
-        1. **Raw genotype ingestion** from chromosome-wise PED/MAP files  
-        2. **Discrepancy detection and validation** to check structure, IDs, phenotype coding, sex coding, and genotype integrity  
-        3. **RA SNP intersection and refinement** to retain SNPs that are biologically relevant and technically reliable  
-        4. **Imputation** to resolve missing genotypes while preserving original observed calls  
-        5. **Additive encoding (0/1/2)** to convert retained SNPs into machine-learning-ready numerical features  
-        6. **Final modeling** using one deployed **XGBoost** classifier
-        """
-    )
-
-    st.subheader("Deployment Scope")
-    st.markdown(
-        """
-        - One deployed model only: **XGBoost**
-        - One deployed encoding only: **Additive encoding (0/1/2)**
-        - No confidential dataset rows are displayed directly
-        - Two testing modes:
-          - predefined demo samples
-          - user-uploaded additive CSV
-        """
-    )
-
-    st.subheader("Why Additive Encoding?")
+    st.subheader("Our Solution")
     st.write(
-        "After transformation and filtering, the retained SNPs are encoded as 0/1/2 to represent "
-        "genotype states in a compact machine-learning-ready format."
+        "GenomicAI addresses this challenge by analyzing genomic variations known as SNPs "
+        "and transforming them into machine-learning-ready features. The deployed system "
+        "uses one XGBoost model trained on additive genomic encoding to estimate the risk "
+        "of Rheumatoid Arthritis."
     )
 
-    plot_feature_reduction(feature_count)
+    st.subheader("How the Project Works")
+    st.markdown(
+        f"""
+        - Start with raw genomic genotype data  
+        - Validate and clean the dataset  
+        - Select Rheumatoid Arthritis-associated SNPs  
+        - Impute missing genetic values  
+        - Transform the final retained SNPs into additive features  
+        - Use one deployed **XGBoost** model to generate RA predictions  
+
+        The full pipeline reduced the data from **531,689 raw SNPs** to **313 refined RA-related SNPs**,  
+        then to **{feature_count} final additive features** used by the model.
+        """
+    )
+
+    st.subheader("Expected Value")
+    st.write(
+        "By supporting earlier risk prediction, GenomicAI can help improve clinical "
+        "decision-making, enable earlier monitoring and intervention, reduce long-term "
+        "healthcare costs, and contribute to the advancement of precision medicine."
+    )
+
+    st.info(
+        "This application is a research and demonstration prototype built to present the "
+        "core idea, workflow, and prediction interface of the project."
+    )
 
 
 def show_prediction_page(artifact):
     st.title("Prediction Center")
     st.write(
-        "Choose one of the two prediction modes below. "
-        "The first mode uses predefined demo samples. "
-        "The second mode accepts a user-uploaded additive CSV file."
+        "This section demonstrates how GenomicAI can generate Rheumatoid Arthritis risk "
+        "predictions from additive-encoded genomic features. Users can either test predefined "
+        "demo samples or upload a compatible CSV file to obtain model predictions."
     )
 
     feature_columns = artifact.get("feature_columns", [])
@@ -191,9 +185,6 @@ def show_prediction_page(artifact):
         horizontal=True,
     )
 
-    # --------------------------------------
-    # Mode 1: Predefined demo samples
-    # --------------------------------------
     if input_mode == "Predefined Demo Samples":
         demo_df, demo_path, demo_error = load_demo_samples()
 
@@ -256,9 +247,6 @@ def show_prediction_page(artifact):
                     else:
                         st.warning("Prediction does not match the expected group.")
 
-    # --------------------------------------
-    # Mode 2: Upload CSV
-    # --------------------------------------
     else:
         st.subheader("Upload Requirements")
         st.write(
@@ -334,58 +322,53 @@ def show_prediction_page(artifact):
             )
 
 
-def show_how_to_use_page(feature_count):
-    st.title("How to Use and Interpret Results")
+def show_about_project_page(feature_count):
+    st.title("About the Project")
 
-    st.subheader("Purpose of the App")
+    st.subheader("Project Vision")
     st.write(
-        "This application predicts rheumatoid arthritis status using one deployed "
-        "XGBoost model trained on additive-encoded genomic features."
+        "GenomicAI aims to support the early prediction of Rheumatoid Arthritis through "
+        "the integration of artificial intelligence, bioinformatics, and genomic data science. "
+        "The project is designed as a step toward preventive healthcare and precision medicine."
     )
 
-    st.subheader("Available Prediction Modes")
-    st.markdown(
-        """
-        **1. Predefined Demo Samples**  
-        Use one of the prepared demo samples to test the interface quickly.
-
-        **2. Upload CSV File**  
-        Upload your own additive-encoded input CSV file and the app will generate predictions.
-        """
-    )
-
-    st.subheader("How to Read the Output")
-    st.markdown(
-        """
-        **Predicted Class**
-        - **RA** means the model predicts a rheumatoid arthritis pattern.
-        - **Control** means the model predicts a non-RA / healthy control pattern.
-
-        **Predicted RA Probability**
-        - This is the model confidence score for the RA class.
-        - A higher percentage means the model considers the sample more likely to belong to the RA group.
-        """
-    )
-
-    st.subheader("CSV Upload Requirements")
+    st.subheader("Why This Matters")
     st.write(
-        "The uploaded CSV file should contain the additive feature columns expected by the model. "
-        "You may upload one sample or multiple samples in the same file."
+        "Rheumatoid Arthritis can cause severe joint damage and long-term disability if it is "
+        "not detected and managed early. A data-driven risk prediction approach can support "
+        "faster clinical decisions and more personalized patient care."
     )
 
-    st.subheader("Important Note")
-    st.warning(
-        "This application is intended for research and demonstration purposes only. "
-        "It should not be used as a standalone medical diagnostic tool."
+    st.subheader("Innovation")
+    st.write(
+        "The innovation of the project lies in combining genomic SNP analysis with machine "
+        "learning to create a practical prediction tool for Rheumatoid Arthritis risk. "
+        "Instead of relying only on symptoms that may appear late, the system uses genomic "
+        "patterns to provide earlier predictive insight."
     )
 
-    st.subheader("Current Deployment Setup")
+    st.subheader("Deployment Scope")
     st.markdown(
         f"""
         - One deployed model: **XGBoost**
         - One deployed encoding: **Additive (0/1/2)**
-        - Feature count used by the model: **{feature_count}**
+        - Final feature count: **{feature_count}**
+        - Demo mode for predefined samples
+        - Upload mode for compatible additive CSV files
         """
+    )
+
+    st.subheader("Potential Impact")
+    st.write(
+        "The project has the potential to support clinicians, researchers, and healthcare "
+        "institutions by improving early screening, reducing disease burden, and advancing "
+        "AI-driven healthcare innovation in Egypt."
+    )
+
+    st.subheader("Important Note")
+    st.warning(
+        "This application is currently a research and demonstration prototype. "
+        "It is not intended to be used as a standalone medical diagnostic system."
     )
 
 
@@ -397,7 +380,7 @@ artifact, artifact_path, artifact_error = load_artifact()
 st.sidebar.title("GenomicAI Navigation")
 page = st.sidebar.radio(
     "Select a page",
-    ["Home", "Prediction Center", "How to Use"]
+    ["Home", "Prediction Center", "About the Project"]
 )
 
 st.sidebar.markdown("---")
@@ -423,6 +406,6 @@ elif page == "Prediction Center":
     else:
         show_prediction_page(artifact)
 
-elif page == "How to Use":
+elif page == "About the Project":
     feature_count = len(artifact.get("feature_columns", [])) if artifact is not None else 0
-    show_how_to_use_page(feature_count)
+    show_about_project_page(feature_count)
