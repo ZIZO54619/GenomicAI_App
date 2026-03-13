@@ -1,16 +1,15 @@
 import streamlit as st
 import pandas as pd
-import joblib
-import os
+import joblib, os
 
 st.set_page_config(
-    page_title="GenomicAI — RA Prediction",
+    page_title="GenomicAI — Rheumatoid Arthritis Prediction",
     page_icon="🧬",
-    layout="wide",
-    initial_sidebar_state="collapsed",   # collapsed by default — we use on-page nav
+    layout="centered",          # CENTERED — fixes the extremes issue
+    initial_sidebar_state="collapsed",
 )
 
-# ── CSS ───────────────────────────────────────────────────────────────────────
+# ── CSS ───────────────────────────────────────────────────────
 def load_css():
     p = os.path.join(os.path.dirname(__file__), "assets", "style.css")
     if os.path.exists(p):
@@ -18,7 +17,7 @@ def load_css():
             st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 load_css()
 
-# ── Model ─────────────────────────────────────────────────────────────────────
+# ── Model ─────────────────────────────────────────────────────
 @st.cache_resource
 def load_model():
     p = os.path.join(os.path.dirname(__file__), "models", "xgboost_model.joblib")
@@ -29,7 +28,7 @@ def predict(artifact, df):
     probs = m.predict_proba(df.reindex(columns=cols, fill_value=0))[:, 1]
     return (probs >= 0.5).astype(int), probs
 
-# ── Session state ─────────────────────────────────────────────────────────────
+# ── State ─────────────────────────────────────────────────────
 if "page" not in st.session_state:
     st.session_state.page = "Home"
 
@@ -38,31 +37,33 @@ def go(p):
     st.rerun()
 
 # ══════════════════════════════════════════════════════════════
-#  TOP NAV BAR  (visible on all pages, works on mobile)
+#  NAVBAR
 # ══════════════════════════════════════════════════════════════
 st.markdown("""
-<div class="topnav">
-  <div class="topnav-brand">🧬 GenomicAI</div>
+<div class="navbar">
+  <div class="nb-brand">
+    <span class="nb-dna">🧬</span>
+    <span class="nb-name">GenomicAI</span>
+  </div>
+  <div class="nb-tagline">AI · Genomics · Precision Medicine</div>
 </div>
 """, unsafe_allow_html=True)
 
-n1, n2, n3, n4 = st.columns([2, 1, 1, 1])
-with n1:
-    st.markdown('<div style="height:1px"></div>', unsafe_allow_html=True)
-with n2:
-    if st.button("🏠 Home", use_container_width=True,
+c1, c2, c3 = st.columns(3)
+with c1:
+    if st.button("🏠  Home", use_container_width=True,
                  type="primary" if st.session_state.page == "Home" else "secondary"):
         go("Home")
-with n3:
-    if st.button("🔬 Predict", use_container_width=True,
-                 type="primary" if st.session_state.page == "Prediction" else "secondary"):
-        go("Prediction")
-with n4:
-    if st.button("📄 About", use_container_width=True,
+with c2:
+    if st.button("🔬  Predict", use_container_width=True,
+                 type="primary" if st.session_state.page == "Predict" else "secondary"):
+        go("Predict")
+with c3:
+    if st.button("📄  About", use_container_width=True,
                  type="primary" if st.session_state.page == "About" else "secondary"):
         go("About")
 
-st.markdown('<div class="nav-divider"></div>', unsafe_allow_html=True)
+st.markdown('<div class="nb-line"></div>', unsafe_allow_html=True)
 
 page = st.session_state.page
 
@@ -74,201 +75,411 @@ if page == "Home":
     # ── Hero ──────────────────────────────────────────────────
     st.markdown("""
     <div class="hero">
-      <div class="hero-chip"><span class="dot"></span>AI · Genomics · Precision Medicine</div>
-      <h1 class="hero-h1">Detect Rheumatoid<br>Arthritis Risk from<br>
-        <span class="grad">Genomic SNP Data</span></h1>
-      <p class="hero-p">
-        GenomicAI converts raw chromosome files into a clinical-grade AI risk score —
-        531,689 SNPs filtered to 212 RA-validated features, powering an XGBoost
-        classifier that can flag high-risk individuals <em>before</em> symptoms appear.
+      <div class="hero-eyebrow">
+        <span class="pulse-dot"></span>
+        AI-Powered Early Detection &nbsp;·&nbsp; Precision Genomics &nbsp;·&nbsp; Clinical Research
+      </div>
+
+      <h1 class="hero-title">
+        Detect Rheumatoid Arthritis<br>
+        Risk Before It Strikes
+      </h1>
+
+      <p class="hero-sub">
+        GenomicAI transforms raw chromosomal genotype files into an
+        interpretable AI risk score — catching high-risk individuals
+        <em>before</em> irreversible joint damage occurs.
       </p>
-      <div class="chip-row">
-        <span class="chip">531,689 Raw SNPs</span>
-        <span class="chip-sep">→</span>
-        <span class="chip">313 RA Markers</span>
-        <span class="chip-sep">→</span>
-        <span class="chip">212 Features</span>
-        <span class="chip-sep">→</span>
-        <span class="chip chip-teal">XGBoost Prediction</span>
+
+      <div class="hero-pills">
+        <span class="pill">531,689 SNPs</span>
+        <span class="arr">→</span>
+        <span class="pill">313 RA Markers</span>
+        <span class="arr">→</span>
+        <span class="pill">212 Features</span>
+        <span class="arr">→</span>
+        <span class="pill pill-teal">XGBoost · RA Risk Score</span>
       </div>
     </div>
     """, unsafe_allow_html=True)
 
     # ── Why it matters ────────────────────────────────────────
     st.markdown("""
-    <div class="impact-bar">
-      <div class="impact-item">
-        <div class="impact-icon">⏱️</div>
-        <div class="impact-text"><strong>Earlier diagnosis</strong><br>RA caught before joint damage is irreversible</div>
+    <div class="why-grid">
+      <div class="why-card wc-animate" style="animation-delay:0s">
+        <div class="why-icon">⏱️</div>
+        <div class="why-title">Catch It Early</div>
+        <div class="why-body">RA damages joints silently. A genomic risk score flags at-risk individuals years before clinical symptoms — when intervention is most effective.</div>
       </div>
-      <div class="impact-item">
-        <div class="impact-icon">💊</div>
-        <div class="impact-text"><strong>Smarter treatment</strong><br>Risk stratification guides therapy decisions</div>
+      <div class="why-card wc-animate" style="animation-delay:0.1s">
+        <div class="why-icon">🧬</div>
+        <div class="why-title">Biology-Driven AI</div>
+        <div class="why-body">Not black-box statistics. Every feature is a validated RA-associated SNP marker — selected from peer-reviewed genomic literature, not a generic filter.</div>
       </div>
-      <div class="impact-item">
-        <div class="impact-icon">🌍</div>
-        <div class="impact-text"><strong>Scalable in Egypt</strong><br>Low-cost genomic screening for high-burden regions</div>
+      <div class="why-card wc-animate" style="animation-delay:0.2s">
+        <div class="why-icon">🌍</div>
+        <div class="why-title">Built for Scale</div>
+        <div class="why-body">Designed for populations with limited specialist access. In Egypt, RA onset averages 38.4 years — a working-age demographic that cannot wait for late diagnosis.</div>
+      </div>
+      <div class="why-card wc-animate" style="animation-delay:0.3s">
+        <div class="why-icon">🔍</div>
+        <div class="why-title">Explainable Output</div>
+        <div class="why-body">SHAP explainability reveals <em>which SNPs</em> drove each prediction. Clinicians see the evidence, not just a number — building trust in AI-assisted diagnosis.</div>
       </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Numbers (responsive HTML grid — not st.columns) ───────
-    st.markdown('<div class="sec-label">BY THE NUMBERS</div>', unsafe_allow_html=True)
+    # ── Numbers ───────────────────────────────────────────────
+    st.markdown('<div class="sec-label">DATASET AT A GLANCE</div>', unsafe_allow_html=True)
     st.markdown("""
-    <div class="kpi-grid">
-      <div class="kpi kpi-p"><div class="kv">2,062</div><div class="kn">Individuals</div><div class="ks">NARAC cohort</div></div>
-      <div class="kpi"><div class="kv" style="color:var(--tx2)">531K</div><div class="kn">Raw SNPs</div><div class="ks">22 autosomes</div></div>
-      <div class="kpi kpi-t"><div class="kv">313</div><div class="kn">RA Markers</div><div class="ks">Knowledge-driven</div></div>
-      <div class="kpi kpi-p"><div class="kv">212</div><div class="kn">Features</div><div class="ks">Additive 0/1/2</div></div>
+    <div class="stats-row">
+      <div class="stat-card sc-purple">
+        <div class="sc-val">2,062</div>
+        <div class="sc-name">Individuals</div>
+        <div class="sc-sub">NARAC cohort</div>
+      </div>
+      <div class="stat-card">
+        <div class="sc-val" style="color:#94a3b8">531K</div>
+        <div class="sc-name">Raw SNPs</div>
+        <div class="sc-sub">22 autosomes</div>
+      </div>
+      <div class="stat-card sc-teal">
+        <div class="sc-val">313</div>
+        <div class="sc-name">RA Markers</div>
+        <div class="sc-sub">Knowledge-driven</div>
+      </div>
+      <div class="stat-card sc-purple">
+        <div class="sc-val">212</div>
+        <div class="sc-name">ML Features</div>
+        <div class="sc-sub">Additive 0/1/2</div>
+      </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Pipeline (HTML grid) ───────────────────────────────────
-    st.markdown('<div class="sec-label">PIPELINE</div>', unsafe_allow_html=True)
-    st.markdown('<p class="sec-sub">Six stages from raw genome to deployable prediction</p>', unsafe_allow_html=True)
+    # ── Pipeline Flowchart ────────────────────────────────────
+    st.markdown('<div class="sec-label">6-STAGE PIPELINE</div>', unsafe_allow_html=True)
     st.markdown("""
-    <div class="pipe-grid">
-      <div class="pc" style="--acc:#7c3aed"><div class="pt-row"><span class="pnum">01</span><span>🔍</span></div><div class="ptitle">Data Description</div><div class="pdesc">PED/MAP inspection · SNP counts · missing data profiling</div></div>
-      <div class="pc" style="--acc:#6d28d9"><div class="pt-row"><span class="pnum">02</span><span>🛡️</span></div><div class="ptitle">QC Validation</div><div class="pdesc">Consistency checks · phenotype & token validity · anomaly detection</div></div>
-      <div class="pc" style="--acc:#0d9488"><div class="pt-row"><span class="pnum">03</span><span>🎯</span></div><div class="ptitle">SNP Refinement</div><div class="pdesc">RA-SNP intersection · 531,689 → 313 biologically validated markers</div></div>
-      <div class="pc" style="--acc:#0f766e"><div class="pt-row"><span class="pnum">04</span><span>🔄</span></div><div class="ptitle">Imputation</div><div class="pdesc">PLINK → VCF → Beagle · missing-only overlay preserves original calls</div></div>
-      <div class="pc" style="--acc:#7c3aed"><div class="pt-row"><span class="pnum">05</span><span>⚙️</span></div><div class="ptitle">Encoding</div><div class="pdesc">Additive 0/1/2 · filter monomorphic SNPs · 313 → 212 features</div></div>
-      <div class="pc" style="--acc:#0d9488"><div class="pt-row"><span class="pnum">06</span><span>🤖</span></div><div class="ptitle">XGBoost Model</div><div class="pdesc">Nested CV · hyperparameter tuning · SHAP explainability</div></div>
+    <div class="pipeline-wrap">
+      <div class="pipe-step ps-animate" style="animation-delay:0s">
+        <div class="ps-num">01</div>
+        <div class="ps-icon">📂</div>
+        <div class="ps-title">Data<br>Description</div>
+        <div class="ps-body">PED/MAP inspection per chromosome · SNP counts · missing data mapping</div>
+      </div>
+      <div class="pipe-conn"><div class="pc-line"></div><div class="pc-arrow">▶</div></div>
+      <div class="pipe-step ps-animate" style="animation-delay:0.08s">
+        <div class="ps-num">02</div>
+        <div class="ps-icon">🛡️</div>
+        <div class="ps-title">QC<br>Validation</div>
+        <div class="ps-body">Structural consistency · phenotype coding · genotype token validity</div>
+      </div>
+      <div class="pipe-conn"><div class="pc-line"></div><div class="pc-arrow">▶</div></div>
+      <div class="pipe-step ps-animate ps-highlight" style="animation-delay:0.16s">
+        <div class="ps-num">03</div>
+        <div class="ps-icon">🎯</div>
+        <div class="ps-title">SNP<br>Refinement</div>
+        <div class="ps-body">531,689 → 313 RA-validated markers via external literature intersection</div>
+      </div>
+      <div class="pipe-conn"><div class="pc-line"></div><div class="pc-arrow">▶</div></div>
+      <div class="pipe-step ps-animate" style="animation-delay:0.24s">
+        <div class="ps-num">04</div>
+        <div class="ps-icon">🔄</div>
+        <div class="ps-title">Beagle<br>Imputation</div>
+        <div class="ps-body">Missing-only overlay · original calls preserved · PLINK → VCF → Beagle</div>
+      </div>
+      <div class="pipe-conn"><div class="pc-line"></div><div class="pc-arrow">▶</div></div>
+      <div class="pipe-step ps-animate" style="animation-delay:0.32s">
+        <div class="ps-num">05</div>
+        <div class="ps-icon">⚙️</div>
+        <div class="ps-title">Additive<br>Encoding</div>
+        <div class="ps-body">0/1/2 schema · filter monomorphic & non-biallelic · 313 → 212 features</div>
+      </div>
+      <div class="pipe-conn"><div class="pc-line"></div><div class="pc-arrow">▶</div></div>
+      <div class="pipe-step ps-animate ps-end" style="animation-delay:0.40s">
+        <div class="ps-num">06</div>
+        <div class="ps-icon">🤖</div>
+        <div class="ps-title">XGBoost<br>Prediction</div>
+        <div class="ps-body">Nested CV · hyperparameter tuning · SHAP feature explainability</div>
+      </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Flow (vertical on mobile via CSS) ─────────────────────
+    # ── Data flow (horizontal animated arrow strip) ───────────
     st.markdown('<div class="sec-label">DATA FLOW</div>', unsafe_allow_html=True)
     st.markdown("""
-    <div class="flow">
-      <div class="fn fn-s"><div class="fi">📁</div><div class="fl">Raw PED/MAP</div><div class="fs">531,689 SNPs</div></div>
-      <div class="fa">→</div>
-      <div class="fn"><div class="fi">🛡️</div><div class="fl">QC Check</div><div class="fs">Validation</div></div>
-      <div class="fa">→</div>
-      <div class="fn fn-t"><div class="fi">🎯</div><div class="fl">RA Panel</div><div class="fs">313 markers</div></div>
-      <div class="fa">→</div>
-      <div class="fn"><div class="fi">🔄</div><div class="fl">Imputation</div><div class="fs">Beagle</div></div>
-      <div class="fa">→</div>
-      <div class="fn"><div class="fi">⚙️</div><div class="fl">Encoding</div><div class="fs">212 features</div></div>
-      <div class="fa">→</div>
-      <div class="fn fn-e"><div class="fi">🤖</div><div class="fl">XGBoost</div><div class="fs">RA Risk Score</div></div>
+    <div class="flow-strip">
+      <div class="fs-node fs-start">
+        <div class="fs-icon">📁</div>
+        <div class="fs-label">Raw PED/MAP</div>
+        <div class="fs-sub">531,689 SNPs</div>
+      </div>
+      <div class="fs-arrow">
+        <div class="fs-line"></div>
+        <div class="fs-dot"></div>
+      </div>
+      <div class="fs-node">
+        <div class="fs-icon">🛡️</div>
+        <div class="fs-label">QC Filter</div>
+        <div class="fs-sub">Validated</div>
+      </div>
+      <div class="fs-arrow">
+        <div class="fs-line"></div>
+        <div class="fs-dot"></div>
+      </div>
+      <div class="fs-node fs-teal">
+        <div class="fs-icon">🎯</div>
+        <div class="fs-label">RA Panel</div>
+        <div class="fs-sub">313 markers</div>
+      </div>
+      <div class="fs-arrow">
+        <div class="fs-line"></div>
+        <div class="fs-dot"></div>
+      </div>
+      <div class="fs-node">
+        <div class="fs-icon">🔄</div>
+        <div class="fs-label">Imputation</div>
+        <div class="fs-sub">Beagle</div>
+      </div>
+      <div class="fs-arrow">
+        <div class="fs-line"></div>
+        <div class="fs-dot"></div>
+      </div>
+      <div class="fs-node">
+        <div class="fs-icon">⚙️</div>
+        <div class="fs-label">Encoding</div>
+        <div class="fs-sub">212 features</div>
+      </div>
+      <div class="fs-arrow">
+        <div class="fs-line"></div>
+        <div class="fs-dot"></div>
+      </div>
+      <div class="fs-node fs-end">
+        <div class="fs-icon">🤖</div>
+        <div class="fs-label">XGBoost</div>
+        <div class="fs-sub">RA Risk Score</div>
+      </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Tech stack (HTML grid) ─────────────────────────────────
-    st.markdown('<div class="sec-label">STACK</div>', unsafe_allow_html=True)
+    # ── Tech stack ────────────────────────────────────────────
+    st.markdown('<div class="sec-label">TECHNOLOGY STACK</div>', unsafe_allow_html=True)
     st.markdown("""
-    <div class="tech-grid">
-      <div class="tc"><div class="th">🧬 Bioinformatics</div>
-        <div class="tr"><span class="tk">PLINK</span><span class="tv">Binary genotype conversion</span></div>
-        <div class="tr"><span class="tk">Beagle</span><span class="tv">Genotype imputation</span></div>
-        <div class="tr"><span class="tk">VCF / PED-MAP</span><span class="tv">Standard genomic formats</span></div>
+    <div class="tech-row">
+      <div class="tech-card">
+        <div class="tc-head">🧬 Bioinformatics</div>
+        <div class="tc-item"><span class="tc-k">PLINK</span><span class="tc-v">Binary genotype conversion</span></div>
+        <div class="tc-item"><span class="tc-k">Beagle</span><span class="tc-v">Probabilistic imputation</span></div>
+        <div class="tc-item"><span class="tc-k">VCF / PED-MAP</span><span class="tc-v">Standard genomic formats</span></div>
       </div>
-      <div class="tc"><div class="th">🤖 ML</div>
-        <div class="tr"><span class="tk">XGBoost</span><span class="tv">Final deployed classifier</span></div>
-        <div class="tr"><span class="tk">Scikit-learn</span><span class="tv">Preprocessing & nested CV</span></div>
-        <div class="tr"><span class="tk">SHAP</span><span class="tv">Feature explainability</span></div>
+      <div class="tech-card">
+        <div class="tc-head">🤖 Machine Learning</div>
+        <div class="tc-item"><span class="tc-k">XGBoost</span><span class="tc-v">Deployed gradient booster</span></div>
+        <div class="tc-item"><span class="tc-k">Scikit-learn</span><span class="tc-v">Preprocessing · nested CV</span></div>
+        <div class="tc-item"><span class="tc-k">SHAP</span><span class="tc-v">Feature explainability</span></div>
       </div>
-      <div class="tc"><div class="th">🚀 Deployment</div>
-        <div class="tr"><span class="tk">Streamlit</span><span class="tv">Interactive web interface</span></div>
-        <div class="tr"><span class="tk">Joblib</span><span class="tv">Model serialization</span></div>
-        <div class="tr"><span class="tk">Pandas / NumPy</span><span class="tv">Data handling</span></div>
+      <div class="tech-card">
+        <div class="tc-head">🚀 Deployment</div>
+        <div class="tc-item"><span class="tc-k">Streamlit</span><span class="tc-v">Interactive web interface</span></div>
+        <div class="tc-item"><span class="tc-k">Joblib</span><span class="tc-v">Model serialization</span></div>
+        <div class="tc-item"><span class="tc-k">Pandas / NumPy</span><span class="tc-v">Data alignment & handling</span></div>
       </div>
     </div>
     """, unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════
-#  PREDICTION
+#  PREDICT
 # ══════════════════════════════════════════════════════════════
-elif page == "Prediction":
+elif page == "Predict":
 
     st.markdown("""
-    <div class="page-hdr">
-      <div class="ph-ic">🔬</div>
-      <div><h1 class="page-title">Prediction Center</h1>
-      <p class="page-sub">Run RA risk prediction on additive-encoded SNP profiles</p></div>
+    <div class="pred-header">
+      <div class="pred-icon-wrap">🔬</div>
+      <div>
+        <h1 class="pred-title">Prediction Center</h1>
+        <p class="pred-sub">Run RA genomic risk scoring on SNP profiles using the trained XGBoost model</p>
+      </div>
     </div>
     """, unsafe_allow_html=True)
 
     model_artifact = load_model()
 
-    if model_artifact is None:
-        st.markdown('<div class="alert aw">⚠️ Model not loaded — place <code>xgboost_model.joblib</code> in <code>models/</code></div>',
-                    unsafe_allow_html=True)
+    # Model status card
+    if model_artifact:
+        st.markdown("""
+        <div class="model-status ms-ok">
+          <div class="ms-left">
+            <div class="ms-dot ms-dot-ok"></div>
+            <div>
+              <div class="ms-title">XGBoost Model · Loaded</div>
+              <div class="ms-sub">212-feature additive encoder · Binary classification</div>
+            </div>
+          </div>
+          <div class="ms-badge">READY</div>
+        </div>
+        """, unsafe_allow_html=True)
     else:
-        st.markdown('<div class="alert ao">✅ XGBoost model ready for inference</div>', unsafe_allow_html=True)
+        st.markdown("""
+        <div class="model-status ms-warn">
+          <div class="ms-left">
+            <div class="ms-dot ms-dot-warn"></div>
+            <div>
+              <div class="ms-title">Model Not Found</div>
+              <div class="ms-sub">Place xgboost_model.joblib in models/ directory</div>
+            </div>
+          </div>
+          <div class="ms-badge ms-badge-warn">OFFLINE</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
-    tab1, tab2 = st.tabs(["📋  Demo Samples", "📤  Upload CSV"])
 
+    # Mode selector
+    st.markdown('<div class="mode-label">SELECT PREDICTION MODE</div>', unsafe_allow_html=True)
+    tab1, tab2 = st.tabs(["📋  Demo — Predefined Samples", "📤  Upload — Your CSV File"])
+
+    # ── TAB 1 ─────────────────────────────────────────────────
     with tab1:
-        st.markdown('<div class="tinfo">Select a predefined NARAC sample to test the pipeline.</div>',
-                    unsafe_allow_html=True)
+        st.markdown("""
+        <div class="tab-desc">
+          Choose a sample from the NARAC dataset to explore the prediction pipeline
+          without uploading any file. Great for demos and presentations.
+        </div>
+        """, unsafe_allow_html=True)
+
         demo_path = os.path.join(os.path.dirname(__file__), "data", "demo_samples.csv")
         if os.path.exists(demo_path):
             demo_df = pd.read_csv(demo_path, index_col=0)
-            selected = st.selectbox("Sample", demo_df.index.tolist(), label_visibility="collapsed")
-            if st.button("▶  Run Prediction", type="primary", key="dr"):
-                row = demo_df.loc[[selected]]
-                expected = row["label"].values[0] if "label" in row.columns else None
-                feat = row.drop(columns=["label"]) if "label" in row.columns else row
-                if model_artifact:
-                    preds, probs = predict(model_artifact, feat)
-                    cls = "RA" if preds[0] == 1 else "Control"
-                    prob = float(probs[0])
-                    is_ra = cls == "RA"
+
+            col_s, col_b = st.columns([3, 1])
+            with col_s:
+                selected = st.selectbox("", demo_df.index.tolist(),
+                                        label_visibility="collapsed")
+            with col_b:
+                run = st.button("▶  Analyze", type="primary",
+                                use_container_width=True, key="dr")
+
+            if run and model_artifact:
+                row   = demo_df.loc[[selected]]
+                exp   = row["label"].values[0] if "label" in row.columns else None
+                feat  = row.drop(columns=["label"]) if "label" in row.columns else row
+                preds, probs = predict(model_artifact, feat)
+                cls   = "RA" if preds[0] == 1 else "Control"
+                prob  = float(probs[0])
+                is_ra = cls == "RA"
+
+                # Big result card
+                card_cls = "result-ra" if is_ra else "result-ctrl"
+                icon     = "⚠️" if is_ra else "✅"
+                st.markdown(f"""
+                <div class="result-card {card_cls}">
+                  <div class="rc-left">
+                    <div class="rc-status">{icon} {'RA Risk Detected' if is_ra else 'No Significant Risk'}</div>
+                    <div class="rc-class">{cls}</div>
+                    <div class="rc-sample">Sample ID: {selected}</div>
+                  </div>
+                  <div class="rc-right">
+                    <div class="rc-plabel">RA Probability Score</div>
+                    <div class="rc-prob {'rp-ra' if is_ra else 'rp-ctrl'}">{prob:.1%}</div>
+                    <div class="rc-sublabel">XGBoost model confidence</div>
+                  </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # Risk gauge bar
+                bar_pct = int(prob * 100)
+                bar_color = "#ef4444" if is_ra else "#14b8a6"
+                st.markdown(f"""
+                <div class="gauge-wrap">
+                  <div class="gauge-label">
+                    <span>Risk Level</span>
+                    <span style="color:{bar_color};font-weight:700">{prob:.4f}</span>
+                  </div>
+                  <div class="gauge-track">
+                    <div class="gauge-fill" style="width:{bar_pct}%;background:{bar_color};">
+                      <div class="gauge-shine"></div>
+                    </div>
+                  </div>
+                  <div class="gauge-marks">
+                    <span>Low</span><span>Medium</span><span>High</span>
+                  </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                if exp is not None:
+                    ok = is_ra == (str(exp).upper() in ["1", "RA", "CASE"])
                     st.markdown(f"""
-                    <div class="rbanner {'r-ra' if is_ra else 'r-ctrl'}">
-                      <div class="rl">
-                        <div class="rchip">{'⚠ RA Risk Detected' if is_ra else '✓ Low Risk'}</div>
-                        <div class="rmain">{cls}</div>
-                        <div class="rsub">Sample: {selected}</div>
-                      </div>
-                      <div class="rr">
-                        <div class="rplbl">RA Probability</div>
-                        <div class="rpval">{prob:.1%}</div>
-                      </div>
+                    <div class="verify-row">
+                      <span class="vr-badge {'vr-ok' if ok else 'vr-err'}">
+                        {'✅ Prediction Correct' if ok else '❌ Mismatch'}
+                      </span>
+                      <span class="vr-exp">Expected label: <strong>{exp}</strong></span>
                     </div>
                     """, unsafe_allow_html=True)
-                    st.progress(prob, text=f"Risk score: {prob:.4f}")
-                    if expected is not None:
-                        ok = is_ra == (str(expected).upper() in ["1","RA","CASE"])
-                        st.markdown(f'<div class="mbadge {"mok" if ok else "merr"}">{"✅ Correct" if ok else "❌ Mismatch"} · Expected: {expected}</div>',
-                                    unsafe_allow_html=True)
-        else:
-            st.markdown('<div class="alert ai">📂 Add <code>demo_samples.csv</code> to <code>data/</code></div>',
-                        unsafe_allow_html=True)
 
+        else:
+            st.markdown("""
+            <div class="empty-state">
+              <div class="es-icon">📂</div>
+              <div class="es-title">No Demo Samples Found</div>
+              <div class="es-body">Add <code>demo_samples.csv</code> to the <code>data/</code> folder.<br>
+              Columns = SNP features (0/1/2), optional <code>label</code> column.</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # ── TAB 2 ─────────────────────────────────────────────────
     with tab2:
-        st.markdown('<div class="tinfo">Upload a CSV — rows = samples, columns = SNP features (0/1/2). Optional <code>label</code> column for comparison.</div>',
-                    unsafe_allow_html=True)
-        f = st.file_uploader("Upload CSV", type=["csv"], label_visibility="collapsed")
+        st.markdown("""
+        <div class="tab-desc">
+          Upload an additive-encoded CSV file. Each row is one sample.
+          Columns must match the 212 SNP features used during model training.
+          An optional <code>label</code> column enables accuracy comparison.
+        </div>
+        """, unsafe_allow_html=True)
+
+        f = st.file_uploader("", type=["csv"], label_visibility="collapsed")
         if f:
             try:
                 df = pd.read_csv(f, index_col=0)
-                st.markdown(f'<div class="alert ai">📊 <strong>{len(df)} sample(s)</strong> · <strong>{df.shape[1]} columns</strong></div>',
-                            unsafe_allow_html=True)
-                if st.button("▶  Run Predictions", type="primary", key="ur"):
+                st.markdown(f"""
+                <div class="file-info">
+                  <span class="fi-icon">📊</span>
+                  <span><strong>{len(df)}</strong> sample(s) loaded · <strong>{df.shape[1]}</strong> columns detected</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+                if st.button("▶  Run Predictions on All Samples",
+                             type="primary", key="ur"):
                     if model_artifact:
-                        lc = df["label"] if "label" in df.columns else None
+                        lc   = df["label"] if "label" in df.columns else None
                         feat = df.drop(columns=["label"]) if "label" in df.columns else df
                         preds, probs = predict(model_artifact, feat)
+
                         res = pd.DataFrame({
                             "Sample": feat.index,
-                            "Class": ["RA" if p == 1 else "Control" for p in preds],
+                            "Prediction": ["RA" if p == 1 else "Control" for p in preds],
                             "RA Probability": [round(float(p), 4) for p in probs],
-                            "Risk": ["High" if p >= .7 else "Medium" if p >= .4 else "Low" for p in probs],
+                            "Risk Level": [
+                                "🔴 High" if p >= .7 else
+                                "🟡 Medium" if p >= .4 else
+                                "🟢 Low" for p in probs
+                            ],
                         })
                         if lc is not None:
                             res["Expected"] = lc.values
-                        def sr(r):
-                            return ["background:rgba(139,92,246,.12)"]*len(r) if r["Class"]=="RA" \
-                                   else ["background:rgba(20,184,166,.08)"]*len(r)
-                        st.dataframe(res.style.apply(sr, axis=1), use_container_width=True,
-                                     height=min(450, 60+len(res)*38))
+
+                        def style_r(r):
+                            if r["Prediction"] == "RA":
+                                return ["background:rgba(239,68,68,.12)"]*len(r)
+                            return ["background:rgba(20,184,166,.08)"]*len(r)
+
+                        st.dataframe(
+                            res.style.apply(style_r, axis=1),
+                            use_container_width=True,
+                            height=min(480, 60 + len(res)*38),
+                        )
             except Exception as e:
-                st.error(f"Error: {e}")
+                st.error(f"Error reading file: {e}")
 
 
 # ══════════════════════════════════════════════════════════════
@@ -276,99 +487,106 @@ elif page == "Prediction":
 # ══════════════════════════════════════════════════════════════
 elif page == "About":
 
+    # Vision banner
     st.markdown("""
-    <div class="page-hdr">
-      <div class="ph-ic">📄</div>
-      <div><h1 class="page-title">About GenomicAI</h1>
-      <p class="page-sub">The research rationale, dataset, and real-world impact</p></div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Vision
-    st.markdown("""
-    <div class="vision">
-      <div class="vq">
+    <div class="vision-banner">
+      <div class="vb-glow"></div>
+      <div class="vb-label">THE MISSION</div>
+      <blockquote class="vb-quote">
         "If deployed at scale, GenomicAI could shift RA management from
-        <em>reactive treatment</em> to <em>proactive prevention</em> —
-        giving clinicians a genomic early-warning system before a single joint is damaged."
-      </div>
+        reactive treatment to proactive prevention — giving clinicians
+        a genomic early-warning system before a single joint is damaged."
+      </blockquote>
     </div>
     """, unsafe_allow_html=True)
 
-    # Impact section
+    # Impact grid
     st.markdown('<div class="sec-label">WHY THIS PROJECT MATTERS</div>', unsafe_allow_html=True)
     st.markdown("""
     <div class="impact-grid">
-      <div class="ig-card">
+      <div class="ig-card ig-animate" style="animation-delay:0s">
         <div class="ig-icon">🩺</div>
         <div class="ig-title">Clinical Impact</div>
-        <div class="ig-body">RA affects 1% of the global population. In Egypt alone, a national ECR study found mean onset at <strong>38.4 years</strong> — a working-age demographic — with 73.7% RF-positive cases and moderate-to-high disease activity (DAS28 ≥ 4.4). Early prediction converts a progressive disease into a manageable one.</div>
+        <div class="ig-body">RA affects 1% of the global population with lifelong consequences.
+        In Egypt, onset averages <strong>38.4 years</strong> — a working-age demographic.
+        Early genomic prediction converts a destructive disease into a manageable one.</div>
       </div>
-      <div class="ig-card">
+      <div class="ig-card ig-animate" style="animation-delay:0.1s">
         <div class="ig-icon">🌍</div>
-        <div class="ig-title">Egyptian Context</div>
-        <div class="ig-body">Egypt's Universal Health Insurance expansion and Digital Egypt 2030 strategy create a direct institutional path for genomic AI screening tools. With rheumatologist density concentrated in Cairo and Alexandria, a scalable digital risk tool addresses a critical geographic gap in specialist access across Upper Egypt and rural governorates.</div>
+        <div class="ig-title">Egyptian Healthcare Context</div>
+        <div class="ig-body">Egypt's Universal Health Insurance expansion and Digital Egypt 2030
+        create a direct institutional path for AI screening tools.
+        With specialists concentrated in Cairo and Alexandria,
+        a scalable genomic tool fills a critical geographic gap.</div>
       </div>
-      <div class="ig-card">
+      <div class="ig-card ig-animate" style="animation-delay:0.2s">
         <div class="ig-icon">🔬</div>
         <div class="ig-title">Scientific Contribution</div>
-        <div class="ig-body">The pipeline's knowledge-driven SNP selection — reducing 531,689 raw markers to 313 RA-validated ones — is reproducible, biologically grounded, and extensible. It provides a framework applicable to other autoimmune diseases and other MENA-region cohorts, contributing to the global precision medicine evidence base.</div>
+        <div class="ig-body">Knowledge-driven SNP selection — 531,689 raw markers distilled to
+        313 RA-validated ones — is reproducible, biologically grounded, and
+        extensible to other autoimmune diseases and MENA-region cohorts.</div>
       </div>
-      <div class="ig-card">
+      <div class="ig-card ig-animate" style="animation-delay:0.3s">
         <div class="ig-icon">💡</div>
         <div class="ig-title">Innovation Edge</div>
-        <div class="ig-body">Unlike black-box genome-wide association studies, GenomicAI produces an <strong>interpretable</strong> output via SHAP explainability. Clinicians can see <em>which SNPs</em> drove the risk score. Combined with the missing-only imputation overlay that preserves original observed calls, the system maintains scientific integrity end-to-end.</div>
+        <div class="ig-body">SHAP explainability reveals which exact SNPs drove each prediction.
+        Clinicians see evidence, not just a score — establishing trust
+        in AI-assisted genomic diagnosis where it matters most.</div>
       </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # Dataset
+    # Dataset stats
     st.markdown('<div class="sec-label">NARAC COHORT</div>', unsafe_allow_html=True)
     st.markdown("""
-    <div class="kpi-grid">
-      <div class="kpi kpi-p"><div class="kv">2,062</div><div class="kn">Individuals</div><div class="ks">Full cohort</div></div>
-      <div class="kpi"><div class="kv" style="color:#f87171">868</div><div class="kn">RA Cases</div><div class="ks">42.1%</div></div>
-      <div class="kpi kpi-t"><div class="kv">1,194</div><div class="kn">Controls</div><div class="ks">57.9%</div></div>
-      <div class="kpi kpi-p"><div class="kv">22</div><div class="kn">Chromosomes</div><div class="ks">Autosomal</div></div>
+    <div class="stats-row">
+      <div class="stat-card sc-purple"><div class="sc-val">2,062</div><div class="sc-name">Individuals</div><div class="sc-sub">Full cohort</div></div>
+      <div class="stat-card"><div class="sc-val" style="color:#f87171">868</div><div class="sc-name">RA Cases</div><div class="sc-sub">42.1%</div></div>
+      <div class="stat-card sc-teal"><div class="sc-val">1,194</div><div class="sc-name">Controls</div><div class="sc-sub">57.9%</div></div>
+      <div class="stat-card sc-purple"><div class="sc-val">22</div><div class="sc-name">Chromosomes</div><div class="sc-sub">Autosomal only</div></div>
     </div>
     """, unsafe_allow_html=True)
 
-    # Strengths + Limits (HTML grid)
-    st.markdown('<div class="sec-label">STRENGTHS & LIMITS</div>', unsafe_allow_html=True)
+    # Strengths + Limits
+    st.markdown('<div class="sec-label">STRENGTHS & LIMITATIONS</div>', unsafe_allow_html=True)
     st.markdown("""
-    <div class="sl-grid">
+    <div class="sl-wrap">
       <div class="sl-card">
-        <div class="sl-h sl-ok">✅ Strengths</div>
-        <div class="fi fi-ok">End-to-end: raw files → live web prototype</div>
-        <div class="fi fi-ok">Biology-driven SNP selection — not statistical shortcutting</div>
-        <div class="fi fi-ok">Missing-only imputation preserves observed genotype integrity</div>
-        <div class="fi fi-ok">SHAP explainability — clinically interpretable output</div>
-        <div class="fi fi-ok">Nested CV ensures unbiased generalization estimates</div>
+        <div class="slc-head ok-head">✅ Strengths</div>
+        <div class="sl-item ok-item">End-to-end pipeline: raw chromosomal files → live web prototype</div>
+        <div class="sl-item ok-item">Biology-driven SNP selection — not statistical shortcuts</div>
+        <div class="sl-item ok-item">Missing-only imputation preserves original genotype calls</div>
+        <div class="sl-item ok-item">SHAP explainability — every prediction is interpretable</div>
+        <div class="sl-item ok-item">Nested cross-validation — unbiased generalization estimates</div>
       </div>
       <div class="sl-card">
-        <div class="sl-h sl-warn">⚠️ Limitations</div>
-        <div class="fi fi-warn">Research prototype — not clinically certified</div>
-        <div class="fi fi-warn">Genomic features only — no imaging or lab values</div>
-        <div class="fi fi-warn">Trained on North American cohort — needs Egyptian validation</div>
-        <div class="fi fi-warn">Production healthcare use requires security & governance hardening</div>
+        <div class="slc-head warn-head">⚠️ Current Limitations</div>
+        <div class="sl-item warn-item">Research prototype — not clinically certified</div>
+        <div class="sl-item warn-item">Genomic features only — no imaging or lab values</div>
+        <div class="sl-item warn-item">Trained on North American cohort — needs Egyptian validation</div>
+        <div class="sl-item warn-item">Production use requires security & governance hardening</div>
       </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # Future
-    st.markdown('<div class="sec-label">ROADMAP</div>', unsafe_allow_html=True)
+    # Roadmap
+    st.markdown('<div class="sec-label">ROADMAP TO REAL-WORLD IMPACT</div>', unsafe_allow_html=True)
     st.markdown("""
-    <div class="road-grid">
-      <div class="rcard"><div class="ric">🔗</div><div class="rt">Multi-modal</div><div class="rd">Genomic + clinical + imaging in one model</div></div>
-      <div class="rcard"><div class="ric">🔍</div><div class="rt">In-app SHAP</div><div class="rd">Live feature importance plots per prediction</div></div>
-      <div class="rcard"><div class="ric">🏥</div><div class="rt">Hospital Platform</div><div class="rd">Authenticated institutional deployment</div></div>
-      <div class="rcard"><div class="ric">🌍</div><div class="rt">Egyptian Cohort</div><div class="rd">Retrain & validate on Arab genomic populations</div></div>
+    <div class="roadmap">
+      <div class="rm-step"><div class="rm-num">1</div><div class="rm-content"><div class="rm-title">Egyptian Cohort Validation</div><div class="rm-body">Partner with ECR-affiliated centers (Cairo University, Ain Shams, Sohag) to collect Egyptian RA samples for model retraining.</div></div></div>
+      <div class="rm-conn"></div>
+      <div class="rm-step"><div class="rm-num">2</div><div class="rm-content"><div class="rm-title">Institutional Pilot</div><div class="rm-body">Deploy as a research decision-support tool in 2–3 tertiary rheumatology centers under IRB oversight.</div></div></div>
+      <div class="rm-conn"></div>
+      <div class="rm-step"><div class="rm-num">3</div><div class="rm-content"><div class="rm-title">Digital Egypt 2030 Integration</div><div class="rm-body">Align with UHI infrastructure and EHR interoperability standards for national health system embedding.</div></div></div>
+      <div class="rm-conn"></div>
+      <div class="rm-step"><div class="rm-num">4</div><div class="rm-content"><div class="rm-title">Regional Scale-Up</div><div class="rm-body">Expand to Upper Egypt and rural governorates where specialist density is lowest and early detection value is highest.</div></div></div>
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown("""
-    <div class="disc">
-      ⚕️ <strong>Disclaimer:</strong> GenomicAI is a research prototype.
+    <div class="disclaimer">
+      ⚕️ <strong>Research Disclaimer:</strong> GenomicAI is a research prototype.
       Outputs are model-generated risk scores, not clinical diagnoses.
+      Any clinical deployment requires full regulatory review and validation.
     </div>
     """, unsafe_allow_html=True)
