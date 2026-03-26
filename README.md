@@ -7,7 +7,6 @@ Interactive Streamlit research demo for SNP-based rheumatoid arthritis risk pred
 <p align="center">
   <img src="https://github.com/user-attachments/assets/cd94c426-5f2b-4850-87ef-42a23794f6be" alt="GenomicAI overview banner showing the user workflow from SNP file upload to AI analysis, RA risk score, and user-friendly result" width="100%">
 </p>
-<img width="1376" height="768" alt="genomicai-overview" src="https://github.com/user-attachments/assets/cd94c426-5f2b-4850-87ef-42a23794f6be" />
 
 ## Why this project matters
 
