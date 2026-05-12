@@ -40,6 +40,100 @@ body, [class*="css"], .stApp {
   font-family: 'Space Grotesk', sans-serif !important;
 }
 
+.presentation-card,
+.presentation-label {
+  direction: ltr;
+  text-align: left;
+}
+.presentation-card {
+  font-family: 'Space Grotesk', 'Segoe UI', Tahoma, Arial, sans-serif;
+}
+.hero-sub-small {
+  font-size: 0.95rem !important;
+  max-width: 720px;
+}
+
+.simple-intro,
+.bio-note {
+  background: var(--bg1);
+  border: 1px solid rgba(45,212,191,0.18);
+  border-left: 4px solid var(--t);
+  border-radius: var(--r);
+  padding: 18px 20px;
+  margin: 16px 0;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.14);
+}
+.simple-kicker {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--t2);
+  margin-bottom: 8px;
+}
+.simple-intro p,
+.bio-note p {
+  color: var(--tx2);
+  font-size: 0.98rem;
+  line-height: 1.9;
+  margin: 0;
+}
+.workflow-simple {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin: 12px 0 22px;
+}
+.simple-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg1);
+  border: 1px solid var(--brd2);
+  border-radius: var(--r);
+  padding: 14px 16px;
+  color: var(--tx1);
+  font-size: 0.9rem;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.12);
+}
+.step-num {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(13,148,136,0.16);
+  border: 1px solid rgba(45,212,191,0.28);
+  color: var(--t2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family:'JetBrains Mono',monospace;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.simple-numbers {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin: 12px 0 22px;
+}
+.number-card {
+  background: var(--bg1);
+  border: 1px solid var(--brd2);
+  border-radius: var(--r);
+  padding: 16px;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.12);
+}
+.number-card span {
+  display: block;
+  color: var(--tx2);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+.number-card strong {
+  display: block;
+  color: var(--tx1);
+  font-size: 1.35rem;
+  margin-top: 6px;
+}
+
 /* Animated bg grid */
 .stApp::before {
   content: '';
@@ -638,7 +732,6 @@ label { color: var(--tx2) !important; font-size: 0.78rem !important; font-family
   border-left-color:var(--t);
   margin-top:4px;
 }
-
 /* Result card */
 .result-card {
   display: flex;
@@ -823,6 +916,8 @@ label { color: var(--tx2) !important; font-size: 0.78rem !important; font-family
 ═══════════════════════════════════════════════ */
 @media (min-width: 580px) {
   .nb-tagline { display: block; }
+  .workflow-simple { grid-template-columns: repeat(2,1fr); }
+  .simple-numbers { grid-template-columns: repeat(3,1fr); }
   .stats-row { grid-template-columns: repeat(4,1fr); }
   .why-grid { grid-template-columns: repeat(2,1fr); }
   .tech-row { grid-template-columns: repeat(3,1fr); }
