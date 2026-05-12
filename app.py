@@ -4,15 +4,15 @@ import joblib, os
 
 CLASSIFICATION_THRESHOLD = 0.50
 DISCLAIMER_TEXT = (
-    "This application is a research prototype for educational and academic "
-    "demonstration purposes. It provides a model-based genomic risk estimate "
-    "and does not replace physician evaluation, laboratory testing, imaging, "
-    "or clinical diagnosis."
+    "Important note: This application is a research and educational prototype. "
+    "Its output is a model-based estimate using genomic data only, not a medical "
+    "diagnosis. Final diagnosis must be made by a physician using clinical "
+    "evaluation, laboratory tests, and imaging."
 )
 LABEL_COLUMNS = ["label", "ExpectedLabel"]
 
 st.set_page_config(
-    page_title="GenomicAI — RA Genomic Risk Prediction",
+    page_title="GenomicAI — Rheumatoid Arthritis Genomic Risk",
     page_icon="🧬",
     layout="centered",          # CENTERED — fixes the extremes issue
     initial_sidebar_state="collapsed",
@@ -22,7 +22,7 @@ st.set_page_config(
 def load_css():
     p = os.path.join(os.path.dirname(__file__), "assets", "style.css")
     if os.path.exists(p):
-        with open(p) as f:
+        with open(p, encoding="utf-8") as f:
             st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 load_css()
 
@@ -40,19 +40,19 @@ def validate_features(df, required_cols):
     extra = [c for c in df.columns if c not in required_cols and c not in LABEL_COLUMNS]
 
     if missing:
-        st.error(f"Missing required SNP features: {len(missing)}")
+        st.error(f"The uploaded file is missing {len(missing)} required genetic markers.")
         st.write(missing[:20])
         st.stop()
 
     if extra:
-        st.warning(f"Ignoring extra columns: {len(extra)}")
+        st.warning(f"{len(extra)} extra column(s) will be ignored because they are not used by the model.")
 
     X = df.reindex(columns=required_cols)
     values = pd.unique(X.values.ravel())
     invalid = [v for v in values if v not in [0, 1, 2]]
 
     if invalid:
-        st.error(f"Invalid genotype values detected: {invalid}. Expected only 0, 1, or 2.")
+        st.error(f"Invalid values found in the uploaded file: {invalid}. Allowed values are only 0, 1, or 2.")
         st.stop()
 
     return X
@@ -64,8 +64,8 @@ def predict(artifact, df):
 
 def render_disclaimer():
     st.markdown(f"""
-    <div class="disclaimer-card">
-      <div class="dc-kicker">Research prototype notice</div>
+    <div class="disclaimer-card presentation-card">
+      <div class="dc-kicker">Important note</div>
       <div class="dc-body">{DISCLAIMER_TEXT}</div>
     </div>
     """, unsafe_allow_html=True)
@@ -87,7 +87,7 @@ st.markdown("""
     <span class="nb-dna">🧬</span>
     <span class="nb-name">GenomicAI</span>
   </div>
-  <div class="nb-tagline">AI · Genomics · Precision Medicine</div>
+  <div class="nb-tagline">Research prototype · Genomic data · Risk estimation</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -97,7 +97,7 @@ with c1:
                  type="primary" if st.session_state.page == "Home" else "secondary"):
         go("Home")
 with c2:
-    if st.button("🔬  Predict", use_container_width=True,
+    if st.button("🔬  Try it", use_container_width=True,
                  type="primary" if st.session_state.page == "Predict" else "secondary"):
         go("Predict")
 with c3:
@@ -107,12 +107,97 @@ with c3:
 
 st.markdown('<div class="nb-line"></div>', unsafe_allow_html=True)
 
+presentation_mode = st.checkbox(
+    "Simple presentation mode",
+    value=True,
+    help="Recommended for presenting to engineering faculty from different fields."
+)
+
 page = st.session_state.page
 
 # ══════════════════════════════════════════════════════════════
 #  HOME
 # ══════════════════════════════════════════════════════════════
 if page == "Home":
+    st.markdown("""
+    <div class="hero presentation-card">
+      <div class="hero-eyebrow">Interactive research prototype for academic presentation</div>
+      <h1 class="hero-title">GenomicAI</h1>
+      <p class="hero-sub">
+        Estimating rheumatoid arthritis genomic risk using genetic data
+      </p>
+      <p class="hero-sub hero-sub-small">
+        A research prototype that estimates genetic susceptibility patterns.
+        It is not a medical diagnosis.
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    render_disclaimer()
+
+    st.markdown("""
+    <div class="simple-intro presentation-card">
+      <div class="simple-kicker">The idea in simple words</div>
+      <p>
+        Rheumatoid arthritis can be discovered late, and delays can lead to joint damage.
+        This project uses small genetic markers to estimate whether a person's genetic
+        pattern looks closer to higher-risk or lower-risk examples learned by the program.
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown('<div class="sec-label presentation-label">Project workflow</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="workflow-simple presentation-card">
+      <div class="simple-step"><div class="step-num">1</div><div>Real genetic data</div></div>
+      <div class="simple-step"><div class="step-num">2</div><div>Clean and review the data</div></div>
+      <div class="simple-step"><div class="step-num">3</div><div>Select important genetic markers</div></div>
+      <div class="simple-step"><div class="step-num">4</div><div>Train a smart prediction program</div></div>
+      <div class="simple-step"><div class="step-num">5</div><div>Estimate risk level</div></div>
+      <div class="simple-step"><div class="step-num">6</div><div>Explain the result biologically</div></div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown('<div class="sec-label presentation-label">Simple numbers for the presentation</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="simple-numbers presentation-card">
+      <div class="number-card"><span>People in the dataset</span><strong>2,062</strong></div>
+      <div class="number-card"><span>Rheumatoid arthritis cases</span><strong>868</strong></div>
+      <div class="number-card"><span>Non-RA controls in the dataset</span><strong>1,194</strong></div>
+      <div class="number-card"><span>Initial genetic markers</span><strong>531,689</strong></div>
+      <div class="number-card"><span>Focused final marker set</span><strong>212 markers</strong></div>
+      <div class="number-card"><span>Discrimination index reached about</span><strong>92%</strong></div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="bio-note presentation-card">
+      <div class="simple-kicker">Why not stop at one prediction number?</div>
+      <p>
+        In medical research, a number alone is not enough. We also looked at which
+        genetic markers the program relied on, then checked whether those markers
+        connect to genes and biological pathways related to immunity and rheumatoid
+        arthritis. This supports the biological interpretation without claiming
+        proof, certainty, or clinical diagnosis.
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    with st.expander("Technical details for specialists", expanded=not presentation_mode):
+        st.markdown("""
+        - Dataset: NARAC
+        - 2,062 samples: 868 cases, 1,194 controls
+        - Raw SNPs: 531,689 autosomal SNPs
+        - Final additive features: 212
+        - Models tested: KNN, Linear SVM, Logistic Regression, Random Forest, Naive Bayes, XGBoost
+        - Best model: XGBoost
+        - ROC-AUC ≈ 0.919
+        - PR-AUC ≈ 0.885
+        - XAI: SHAP and permutation importance
+        - Biological interpretation: SNP-to-gene mapping, STRING, enrichment analysis
+        """)
+
+    st.stop()
 
     # ── Hero ──────────────────────────────────────────────────
     st.markdown("""
@@ -339,8 +424,8 @@ elif page == "Predict":
     <div class="pred-header">
       <div class="pred-icon-wrap">🔬</div>
       <div>
-        <h1 class="pred-title">Prediction Center</h1>
-        <p class="pred-sub">Run SNP-based RA genomic risk estimation using the trained XGBoost model</p>
+        <h1 class="pred-title">Risk Estimation Demo</h1>
+        <p class="pred-sub">Try the app with a built-in demo sample, or upload a CSV using the required genetic marker columns.</p>
       </div>
     </div>
     """, unsafe_allow_html=True)
@@ -356,8 +441,8 @@ elif page == "Predict":
           <div class="ms-left">
             <div class="ms-dot ms-dot-ok"></div>
             <div>
-              <div class="ms-title">XGBoost Model · Loaded</div>
-              <div class="ms-sub">212-feature additive encoder · Demo threshold {CLASSIFICATION_THRESHOLD:.2f}</div>
+              <div class="ms-title">Prediction program loaded</div>
+              <div class="ms-sub">Uses 212 genetic markers · Demo threshold {CLASSIFICATION_THRESHOLD:.2f}</div>
             </div>
           </div>
           <div class="ms-badge">READY</div>
@@ -369,8 +454,8 @@ elif page == "Predict":
           <div class="ms-left">
             <div class="ms-dot ms-dot-warn"></div>
             <div>
-              <div class="ms-title">Model Not Found</div>
-              <div class="ms-sub">Place xgboost_model.joblib in models/ directory</div>
+              <div class="ms-title">Model file not found</div>
+              <div class="ms-sub">Place xgboost_model.joblib inside the models/ folder</div>
             </div>
           </div>
           <div class="ms-badge ms-badge-warn">OFFLINE</div>
@@ -380,28 +465,30 @@ elif page == "Predict":
     st.markdown("<br>", unsafe_allow_html=True)
 
     # Mode selector
-    st.markdown('<div class="mode-label">SELECT PREDICTION MODE</div>', unsafe_allow_html=True)
-    tab1, tab2 = st.tabs(["📋  Demo — Predefined Samples", "📤  Upload — Your CSV File"])
+    st.markdown('<div class="mode-label presentation-label">Choose a demo mode</div>', unsafe_allow_html=True)
+    tab1, tab2 = st.tabs(["📋  Built-in demo sample", "📤  Upload CSV file"])
 
     # ── TAB 1 ─────────────────────────────────────────────────
     with tab1:
         st.markdown("""
-        <div class="tab-desc">
-          Choose a sample from the NARAC dataset to explore the risk-estimation pipeline
-          without uploading any file. Great for demos and presentations.
+        <div class="tab-desc presentation-card">
+          Choose a built-in sample to demonstrate the idea without uploading a file.
+          This output is for educational demonstration only, not diagnosis.
         </div>
         """, unsafe_allow_html=True)
 
         demo_path = os.path.join(os.path.dirname(__file__), "data", "demo_samples.csv")
         if os.path.exists(demo_path):
             demo_df = pd.read_csv(demo_path, index_col=0)
+            demo_labels = {f"Demo sample {i + 1}": idx for i, idx in enumerate(demo_df.index)}
 
             col_s, col_b = st.columns([3, 1])
             with col_s:
-                selected = st.selectbox("", demo_df.index.tolist(),
-                                        label_visibility="collapsed")
+                selected_label = st.selectbox("Choose a demo sample", list(demo_labels.keys()),
+                                              label_visibility="collapsed")
+                selected = demo_labels[selected_label]
             with col_b:
-                run = st.button("▶  Analyze", type="primary",
+                run = st.button("▶  Estimate risk", type="primary",
                                 use_container_width=True, key="dr")
 
             if run and model_artifact:
@@ -411,7 +498,7 @@ elif page == "Predict":
                 required_cols = get_required_feature_columns(model_artifact)
                 feat  = validate_features(row, required_cols)
                 preds, probs = predict(model_artifact, feat)
-                cls   = "Higher RA-like genomic risk pattern" if preds[0] == 1 else "Lower RA-like genomic risk pattern"
+                cls   = "Genetic pattern suggesting higher rheumatoid arthritis susceptibility" if preds[0] == 1 else "Genetic pattern suggesting lower rheumatoid arthritis susceptibility"
                 prob  = float(probs[0])
                 is_higher = preds[0] == 1
 
@@ -421,23 +508,23 @@ elif page == "Predict":
                 st.markdown(f"""
                 <div class="result-card {card_cls}">
                   <div class="rc-left">
-                    <div class="rc-status">{icon} {'Higher risk pattern' if is_higher else 'Lower risk pattern'}</div>
+                    <div class="rc-status">{icon} {'Higher susceptibility pattern' if is_higher else 'Lower susceptibility pattern'}</div>
                     <div class="rc-class">{cls}</div>
-                    <div class="rc-sample">Sample ID: {selected}</div>
+                    <div class="rc-sample">Sample: {selected_label}</div>
                   </div>
                   <div class="rc-right">
-                    <div class="rc-plabel">RA-like genomic risk probability</div>
+                    <div class="rc-plabel">Program-based genomic risk score</div>
                     <div class="rc-prob {'rp-ra' if is_higher else 'rp-ctrl'}">{prob:.1%}</div>
-                    <div class="rc-sublabel">Model-based genomic risk score</div>
+                    <div class="rc-sublabel">Higher values mean the genetic pattern is closer to higher-risk examples learned by the program.</div>
                   </div>
                 </div>
                 """, unsafe_allow_html=True)
 
                 st.markdown(f"""
-                <div class="threshold-note">
-                  Classification threshold used in this demo: {CLASSIFICATION_THRESHOLD:.2f}.
-                  The probability score should be interpreted as a model-based risk score,
-                  not as a clinical diagnosis.
+                <div class="threshold-note presentation-card">
+                  This result is a risk estimate, not a diagnosis.<br>
+                  Threshold used in this demo: {CLASSIFICATION_THRESHOLD:.2f}.<br>
+                  The probability score is more informative than the final class because it represents the program-based risk level.
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -447,7 +534,7 @@ elif page == "Predict":
                 st.markdown(f"""
                 <div class="gauge-wrap">
                   <div class="gauge-label">
-                    <span>Model-based risk score</span>
+                    <span>Genomic risk score</span>
                     <span style="color:{bar_color};font-weight:700">{prob:.4f}</span>
                   </div>
                   <div class="gauge-track">
@@ -456,7 +543,7 @@ elif page == "Predict":
                     </div>
                   </div>
                   <div class="gauge-marks">
-                    <span>Low</span><span>Medium</span><span>High</span>
+                    <span>Lower</span><span>Medium</span><span>Higher</span>
                   </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -466,9 +553,9 @@ elif page == "Predict":
                     st.markdown(f"""
                     <div class="verify-row">
                       <span class="vr-badge {'vr-ok' if ok else 'vr-err'}">
-                        {'Reference label matched' if ok else 'Reference label mismatch'}
+                        {'Matches reference label' if ok else 'Differs from reference label'}
                       </span>
-                      <span class="vr-exp">Expected label: <strong>{exp}</strong></span>
+                      <span class="vr-exp">Reference label in data: <strong>{exp}</strong></span>
                     </div>
                     """, unsafe_allow_html=True)
 
@@ -476,34 +563,34 @@ elif page == "Predict":
             st.markdown("""
             <div class="empty-state">
               <div class="es-icon">📂</div>
-              <div class="es-title">No Demo Samples Found</div>
+              <div class="es-title">No demo samples found</div>
               <div class="es-body">Add <code>demo_samples.csv</code> to the <code>data/</code> folder.<br>
-              Columns = SNP features (0/1/2), optional <code>label</code> column.</div>
+              Columns = genetic markers (0/1/2), with optional <code>label</code> column.</div>
             </div>
             """, unsafe_allow_html=True)
 
     # ── TAB 2 ─────────────────────────────────────────────────
     with tab2:
         st.markdown("""
-        <div class="tab-desc">
-          Upload an additive-encoded CSV file. Each row is one sample.
-          Columns must match the 212 SNP features used during model training.
-          An optional <code>label</code> column enables reference-label comparison.
+        <div class="tab-desc presentation-card">
+          Upload a CSV containing the required genetic marker columns. Each row is one sample.
+          Marker values must be 0, 1, or 2 only. An optional <code>label</code> column can be included
+          for reference-label comparison.
         </div>
         """, unsafe_allow_html=True)
 
-        f = st.file_uploader("", type=["csv"], label_visibility="collapsed")
+        f = st.file_uploader("Upload CSV file", type=["csv"], label_visibility="collapsed")
         if f:
             try:
                 df = pd.read_csv(f, index_col=0)
                 st.markdown(f"""
                 <div class="file-info">
                   <span class="fi-icon">📊</span>
-                  <span><strong>{len(df)}</strong> sample(s) loaded · <strong>{df.shape[1]}</strong> columns detected</span>
+                  <span>Loaded <strong>{len(df)}</strong> sample(s) · Found <strong>{df.shape[1]}</strong> column(s)</span>
                 </div>
                 """, unsafe_allow_html=True)
 
-                if st.button("▶  Run Predictions on All Samples",
+                if st.button("▶  Estimate risk for all samples",
                              type="primary", key="ur"):
                     if model_artifact:
                         label_col = next((c for c in LABEL_COLUMNS if c in df.columns), None)
@@ -514,30 +601,30 @@ elif page == "Predict":
 
                         res = pd.DataFrame({
                             "Sample": feat.index,
-                            "Risk Pattern": [
-                                "Higher RA-like genomic risk pattern" if p == 1
-                                else "Lower RA-like genomic risk pattern" for p in preds
+                            "Genetic Pattern": [
+                                "Genetic pattern suggesting higher rheumatoid arthritis susceptibility" if p == 1
+                                else "Genetic pattern suggesting lower rheumatoid arthritis susceptibility" for p in preds
                             ],
-                            "RA-like Genomic Risk Probability": [round(float(p), 4) for p in probs],
-                            "Risk Stratum": [
-                                "Higher risk pattern" if p >= .7 else
-                                "Intermediate risk pattern" if p >= .4 else
-                                "Lower risk pattern" for p in probs
+                            "Program-based Genomic Risk Score": [round(float(p), 4) for p in probs],
+                            "Approximate Level": [
+                                "Higher susceptibility" if p >= .7 else
+                                "Intermediate susceptibility" if p >= .4 else
+                                "Lower susceptibility" for p in probs
                             ],
                         })
                         if lc is not None:
-                            res["Expected"] = lc.values
+                            res["Reference Label"] = lc.values
 
                         def style_r(r):
-                            if r["Risk Pattern"] == "Higher RA-like genomic risk pattern":
+                            if r["Genetic Pattern"] == "Genetic pattern suggesting higher rheumatoid arthritis susceptibility":
                                 return ["background:rgba(180,83,9,.10)"]*len(r)
                             return ["background:rgba(20,184,166,.08)"]*len(r)
 
                         st.markdown(f"""
-                        <div class="threshold-note">
-                          Classification threshold used in this demo: {CLASSIFICATION_THRESHOLD:.2f}.
-                          The probability score should be interpreted as a model-based risk score,
-                          not as a clinical diagnosis.
+                        <div class="threshold-note presentation-card">
+                          This result is a risk estimate, not a diagnosis.<br>
+                          Threshold used in this demo: {CLASSIFICATION_THRESHOLD:.2f}.<br>
+                          The probability score is more informative than the final class because it represents the program-based risk level.
                         </div>
                         """, unsafe_allow_html=True)
 
@@ -554,6 +641,42 @@ elif page == "Predict":
 #  ABOUT
 # ══════════════════════════════════════════════════════════════
 elif page == "About":
+    st.markdown("""
+    <div class="vision-banner presentation-card">
+      <div class="vb-label">About the project</div>
+      <blockquote class="vb-quote">
+        GenomicAI is a graduation research prototype showing how genomic data and
+        a smart prediction program can estimate rheumatoid arthritis susceptibility
+        patterns. The goal is academic demonstration and education, not diagnosis.
+      </blockquote>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown('<div class="sec-label presentation-label">What makes the project clear?</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="impact-grid presentation-card">
+      <div class="ig-card"><div class="ig-title">Clear engineering idea</div><div class="ig-body">Turn a very large genetic file into an understandable risk score.</div></div>
+      <div class="ig-card"><div class="ig-title">Focused data filtering</div><div class="ig-body">Instead of using every marker, the pipeline focuses on markers most relevant to the research question.</div></div>
+      <div class="ig-card"><div class="ig-title">Biological interpretation</div><div class="ig-body">The project does not stop at a number; it tries to give biological meaning to important markers.</div></div>
+      <div class="ig-card"><div class="ig-title">Clear limitations</div><div class="ig-body">The model is a research prototype and needs validation on local data before practical use.</div></div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    with st.expander("Technical details for specialists", expanded=not presentation_mode):
+        st.markdown("""
+        - Dataset: NARAC
+        - 2,062 samples: 868 cases, 1,194 controls
+        - Raw SNPs: 531,689 autosomal SNPs
+        - Final additive features: 212
+        - Models tested: KNN, Linear SVM, Logistic Regression, Random Forest, Naive Bayes, XGBoost
+        - Best model: XGBoost
+        - ROC-AUC ≈ 0.919, PR-AUC ≈ 0.885
+        - XAI: SHAP and permutation importance
+        - Biological interpretation: SNP-to-gene mapping, STRING, enrichment analysis
+        """)
+
+    render_disclaimer()
+    st.stop()
 
     # Vision banner
     st.markdown("""
