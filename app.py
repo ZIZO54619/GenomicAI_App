@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import joblib, os
+import plotly.graph_objects as go
 
 CLASSIFICATION_THRESHOLD = 0.50
 DISCLAIMER_TEXT = (
@@ -69,6 +70,281 @@ def render_disclaimer():
       <div class="dc-body">{DISCLAIMER_TEXT}</div>
     </div>
     """, unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════════
+# BIOLOGICAL INTERPRETATION SECTION
+# ══════════════════════════════════════════════════════════════
+
+def _asset_path(filename: str) -> str:
+    return os.path.join(os.path.dirname(__file__), "assets", filename)
+
+
+def _first_existing_asset(filenames):
+    for filename in filenames:
+        path = _asset_path(filename)
+        if os.path.exists(path):
+            return path
+    return None
+
+
+def build_biological_sankey():
+    labels = [
+        "Prioritized SNPs",
+        "Candidate Genes",
+        "Proteins / STRING Network",
+        "Immune Pathways",
+        "RA Risk Interpretation",
+    ]
+
+    fig = go.Figure(
+        data=[
+            go.Sankey(
+                arrangement="snap",
+                node=dict(
+                    pad=20,
+                    thickness=18,
+                    line=dict(color="rgba(15, 23, 42, 0.25)", width=0.5),
+                    label=labels,
+                    color=[
+                        "rgba(124, 58, 237, 0.92)",
+                        "rgba(14, 165, 233, 0.90)",
+                        "rgba(20, 184, 166, 0.90)",
+                        "rgba(245, 158, 11, 0.90)",
+                        "rgba(180, 83, 9, 0.95)",
+                    ],
+                ),
+                link=dict(
+                    source=[0, 1, 2, 3],
+                    target=[1, 2, 3, 4],
+                    value=[32, 54, 90, 90],
+                    color=[
+                        "rgba(124, 58, 237, 0.22)",
+                        "rgba(14, 165, 233, 0.22)",
+                        "rgba(20, 184, 166, 0.22)",
+                        "rgba(245, 158, 11, 0.25)",
+                    ],
+                ),
+            )
+        ]
+    )
+
+    fig.update_layout(
+        height=330,
+        margin=dict(l=5, r=5, t=10, b=5),
+        font=dict(size=13, color="#f0f2ff"),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+    )
+    return fig
+
+
+def render_biological_interpretation(prob=None, sample_name=None):
+    st.markdown(
+        """
+        <style>
+        .bio-wrap {
+            margin-top: 1.1rem;
+            padding: 1.1rem 1.15rem;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(124,58,237,0.10), rgba(13,148,136,0.07));
+            border: 1px solid rgba(124,58,237,0.20);
+            border-left: 4px solid #2dd4bf;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.16);
+        }
+        .bio-kicker {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.58rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: #2dd4bf;
+            font-weight: 800;
+            margin-bottom: 0.35rem;
+        }
+        .bio-title {
+            font-family: 'Fraunces', serif;
+            font-size: 1.55rem;
+            line-height: 1.15;
+            font-weight: 700;
+            color: #f0f2ff;
+            margin-bottom: 0.45rem;
+        }
+        .bio-text {
+            font-size: 0.86rem;
+            color: #8892b0;
+            line-height: 1.6;
+            margin-bottom: 0.1rem;
+        }
+        .bio-card {
+            padding: 0.85rem 0.95rem;
+            border-radius: 12px;
+            background: rgba(13, 15, 30, 0.80);
+            border: 1px solid rgba(255,255,255,0.06);
+            margin: 0.8rem 0;
+        }
+        .bio-card-title {
+            font-weight: 800;
+            color: #f0f2ff;
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+        }
+        .bio-small {
+            font-size: 0.80rem;
+            color: #8892b0;
+            line-height: 1.55;
+        }
+        .bio-pill {
+            display: inline-block;
+            padding: 0.22rem 0.55rem;
+            border-radius: 999px;
+            background: rgba(13,148,136,0.12);
+            border: 1px solid rgba(45,212,191,0.20);
+            color: #2dd4bf;
+            font-weight: 750;
+            margin: 0.12rem 0.16rem 0.12rem 0;
+            font-size: 0.74rem;
+        }
+        .bio-disclaimer {
+            padding: 0.85rem 0.95rem;
+            border-radius: 12px;
+            background: rgba(180,83,9,0.10);
+            border: 1px solid rgba(245,158,11,0.25);
+            color: #fbbf24;
+            font-weight: 800;
+            line-height: 1.45;
+            margin-top: 0.9rem;
+            font-size: 0.80rem;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+        <div class="bio-wrap presentation-card">
+            <div class="bio-kicker">Explainable Genomic AI</div>
+            <div class="bio-title">Biological Interpretation</div>
+            <div class="bio-text">
+                The risk score is not only a number. GenomicAI links the prediction to
+                additive genotype markers coded as <b>0 / 1 / 2</b>, then summarizes the
+                biological context through SNPs, genes, protein-network evidence, and immune pathways.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if prob is not None:
+        st.markdown(
+            f"""
+            <div class="bio-card presentation-card">
+                <div class="bio-card-title">Current sample context</div>
+                <div class="bio-small">
+                    For <b>{sample_name if sample_name else "this sample"}</b>, the model generated a
+                    program-based genomic risk score of <b>{float(prob):.1%}</b>. The explanation below
+                    connects important SNP patterns to immune-related biology.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            """
+            <div class="bio-card presentation-card">
+                <div class="bio-card-title">Project-level interpretation</div>
+                <div class="bio-small">
+                    For uploaded batches, this section summarizes the biological interpretation layer of the project.
+                    It does not assign one probability to the whole file; each row keeps its own risk score in the results table.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Prioritized SNPs", "32")
+    c2.metric("Candidate Genes", "54")
+    c3.metric("Network Nodes", "90")
+
+    st.markdown("#### Top SNPs used in the interpretation layer")
+
+    top_snps = pd.DataFrame(
+        [
+            ["rs660895", "0 / 1 / 2", "Dominant HLA-region signal; antigen presentation context"],
+            ["rs6910071", "0 / 1 / 2", "Prioritized immune/genomic marker"],
+            ["rs13192471", "0 / 1 / 2", "HLA-related adaptive immune context"],
+            ["rs17533090", "0 / 1 / 2", "Prioritized RA-associated SNP signal"],
+            ["rs1182531", "0 / 1 / 2", "Candidate locus contributing to explanation"],
+        ],
+        columns=["SNP", "Additive Encoding", "Biological Context"],
+    )
+    st.dataframe(top_snps, use_container_width=True, hide_index=True)
+
+    st.markdown(
+        """
+        <div class="bio-card presentation-card">
+            <div class="bio-card-title">SHAP explanation</div>
+            <div class="bio-small">
+                SHAP highlights which SNP features contributed most to the model output.
+                It explains model behavior, not medical diagnosis and not biological causality.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    shap_img = _first_existing_asset([
+        "XGB_Additive_SHAP_Top20.png",
+        "XGB_Additive_SHAP_beeswarm_Top20.png",
+    ])
+    string_img = _first_existing_asset(["string_network.png"])
+
+    img_col1, img_col2 = st.columns(2)
+    with img_col1:
+        if shap_img:
+            st.image(shap_img, caption="Top SNPs by SHAP importance", use_container_width=True)
+        else:
+            st.info("SHAP figure will appear here when added to assets/.")
+
+    with img_col2:
+        if string_img:
+            st.image(string_img, caption="Candidate gene/protein network", use_container_width=True)
+        else:
+            st.info("STRING network figure will appear here when added to assets/.")
+
+    st.markdown("#### Prioritized SNPs → Candidate Genes → Proteins/STRING Network → Immune Pathways → RA Risk Interpretation")
+    st.plotly_chart(build_biological_sankey(), use_container_width=True)
+
+    st.markdown(
+        """
+        <div class="bio-card presentation-card">
+            <div class="bio-card-title">Biological meaning</div>
+            <div class="bio-small">
+                The interpretation layer points to immune-related biology, including:
+                <br><br>
+                <span class="bio-pill">antigen processing and presentation</span>
+                <span class="bio-pill">T-cell receptor signaling</span>
+                <span class="bio-pill">interferon-gamma pathway</span>
+                <span class="bio-pill">immune-related biology</span>
+                <br><br>
+                This supports a pitch-friendly message: the model produces a genomic risk estimate,
+                then connects important additive SNP patterns to biologically meaningful immune mechanisms.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+        <div class="bio-disclaimer presentation-card">
+            This is a research and educational prototype, not a medical diagnosis.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # ── State ─────────────────────────────────────────────────────
 if "page" not in st.session_state:
@@ -548,6 +824,12 @@ elif page == "Predict":
                 </div>
                 """, unsafe_allow_html=True)
 
+                # Biological Interpretation appears directly after the risk gauge for the pitch video.
+                render_biological_interpretation(
+                    prob=prob,
+                    sample_name=selected_label,
+                )
+
                 if exp is not None:
                     ok = is_higher == (str(exp).upper() in ["1", "RA", "CASE"])
                     st.markdown(f"""
@@ -633,6 +915,19 @@ elif page == "Predict":
                             use_container_width=True,
                             height=min(480, 60 + len(res)*38),
                         )
+
+                        # For one uploaded sample: show current sample context.
+                        # For multiple samples: show project-level interpretation only.
+                        if len(res) == 1:
+                            render_biological_interpretation(
+                                prob=float(probs[0]),
+                                sample_name=str(res["Sample"].iloc[0]),
+                            )
+                        else:
+                            render_biological_interpretation(
+                                prob=None,
+                                sample_name="uploaded batch",
+                            )
             except Exception as e:
                 st.error(f"Error reading file: {e}")
 
