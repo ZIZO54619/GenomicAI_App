@@ -1,7 +1,9 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import joblib, os
 import plotly.graph_objects as pgo
+import shap
 
 CLASSIFICATION_THRESHOLD = 0.50
 DISCLAIMER_TEXT = (
@@ -72,279 +74,414 @@ def render_disclaimer():
     """, unsafe_allow_html=True)
 
 
-# ══════════════════════════════════════════════════════════════
-# BIOLOGICAL INTERPRETATION SECTION
-# ══════════════════════════════════════════════════════════════
+# ── Dynamic Biological Interpretation ─────────────────────────
+def _safe_text(value, fallback="Not available"):
+    if value is None:
+        return fallback
+    try:
+        if pd.isna(value):
+            return fallback
+    except Exception:
+        pass
+    text = str(value).strip()
+    if not text or text.lower() in {"nan", "none", "null", "na", "n/a", "-"}:
+        return fallback
+    return text
 
-def _asset_path(filename: str) -> str:
-    return os.path.join(os.path.dirname(__file__), "assets", filename)
+
+def _split_multi_value(value, fallback="Not available"):
+    text = _safe_text(value, fallback=fallback)
+    if text == fallback:
+        return [fallback]
+    for sep in [";", "|", ","]:
+        if sep in text:
+            return [x.strip() for x in text.split(sep) if x.strip()] or [fallback]
+    return [text]
 
 
-def _first_existing_asset(filenames):
-    for filename in filenames:
-        path = _asset_path(filename)
-        if os.path.exists(path):
-            return path
-    return None
-
-
-def build_biological_sankey():
-    labels = [
-        "Prioritized SNPs",
-        "Candidate Genes",
-        "Proteins / STRING Network",
-        "Immune Pathways",
-        "RA Risk Interpretation",
+@st.cache_data
+def load_biological_mapping():
+    """
+    Optional mapping file.
+    Expected useful columns: SNP, Gene, Protein, Pathway.
+    If no file exists, dynamic SHAP still works and biology fields become Unmapped / Not available.
+    """
+    base = os.path.dirname(__file__)
+    candidates = [
+        os.path.join(base, "data", "snp_gene_protein_pathway_mapping.csv"),
+        os.path.join(base, "data", "biological_mapping.csv"),
+        os.path.join(base, "data", "snp_biology_mapping.csv"),
+        os.path.join(base, "assets", "snp_gene_protein_pathway_mapping.csv"),
+        os.path.join(base, "assets", "biological_mapping.csv"),
     ]
+
+    for path in candidates:
+        if os.path.exists(path):
+            df = pd.read_csv(path)
+            df.columns = [str(c).strip() for c in df.columns]
+
+            lower_to_original = {c.lower(): c for c in df.columns}
+            rename = {}
+            aliases = {
+                "SNP": ["snp", "rsid", "rs_id", "marker", "variant"],
+                "Gene": ["gene", "candidate_gene", "candidate_genes", "mapped_gene", "mapped_genes", "genes"],
+                "Protein": ["protein", "proteins", "string_protein", "string_node", "network_node"],
+                "Pathway": ["pathway", "pathways", "term", "enrichment_term", "biological_pathway"],
+            }
+
+            for standard, names in aliases.items():
+                for name in names:
+                    if name in lower_to_original:
+                        rename[lower_to_original[name]] = standard
+                        break
+
+            df = df.rename(columns=rename)
+            if "SNP" not in df.columns:
+                return pd.DataFrame(columns=["SNP", "Gene", "Protein", "Pathway"])
+
+            for col in ["Gene", "Protein", "Pathway"]:
+                if col not in df.columns:
+                    df[col] = "Not available"
+
+            df["SNP"] = df["SNP"].astype(str).str.strip()
+            return df[["SNP", "Gene", "Protein", "Pathway"]].copy()
+
+    return pd.DataFrame(columns=["SNP", "Gene", "Protein", "Pathway"])
+
+
+@st.cache_resource
+def get_shap_explainer(model):
+    return shap.TreeExplainer(model)
+
+
+def _extract_shap_matrix(shap_values):
+    """Return a 2D samples × features SHAP matrix for binary or single-output models."""
+    if isinstance(shap_values, list):
+        # Binary classifiers commonly return [class_0, class_1]
+        arr = np.asarray(shap_values[-1])
+    else:
+        arr = np.asarray(shap_values)
+
+    if arr.ndim == 3:
+        # Possible shape: samples × features × classes
+        if arr.shape[-1] > 1:
+            arr = arr[:, :, -1]
+        else:
+            arr = arr[:, :, 0]
+    return arr
+
+
+def compute_shap_values(artifact, X):
+    model = artifact["model"]
+    explainer = get_shap_explainer(model)
+    raw = explainer.shap_values(X)
+    shap_matrix = _extract_shap_matrix(raw)
+    return pd.DataFrame(shap_matrix, index=X.index, columns=X.columns)
+
+
+def attach_biology_mapping(top_df, mapping_df):
+    top_df = top_df.copy()
+
+    if mapping_df is None or mapping_df.empty:
+        top_df["Gene"] = "Unmapped"
+        top_df["Protein"] = "Not available"
+        top_df["Pathway"] = "Not available"
+        return top_df
+
+    merged = top_df.merge(mapping_df, on="SNP", how="left")
+    merged["Gene"] = merged["Gene"].apply(lambda x: _safe_text(x, "Unmapped"))
+    merged["Protein"] = merged["Protein"].apply(lambda x: _safe_text(x, "Not available"))
+    merged["Pathway"] = merged["Pathway"].apply(lambda x: _safe_text(x, "Not available"))
+    return merged
+
+
+def get_top_shap_for_sample(shap_df, X, sample_index, top_n=15):
+    row_shap = shap_df.loc[sample_index]
+    row_x = X.loc[sample_index]
+
+    top = (
+        pd.DataFrame({
+            "SNP": row_shap.index,
+            "Additive Encoding": row_x.values,
+            "SHAP Value": row_shap.values,
+            "Absolute SHAP": np.abs(row_shap.values),
+        })
+        .sort_values("Absolute SHAP", ascending=False)
+        .head(top_n)
+        .reset_index(drop=True)
+    )
+
+    top["Contribution Direction"] = np.where(
+        top["SHAP Value"] > 0,
+        "Pushes risk score higher",
+        np.where(top["SHAP Value"] < 0, "Pushes risk score lower", "Neutral")
+    )
+    top["Additive Encoding"] = top["Additive Encoding"].astype(int).astype(str)
+    top["SHAP Value"] = top["SHAP Value"].astype(float).round(5)
+    top["Absolute SHAP"] = top["Absolute SHAP"].astype(float).round(5)
+    return top
+
+
+def summarize_batch_shap(shap_df, X, mapping_df, top_n=15):
+    rows = []
+    for sample_id in shap_df.index:
+        top = get_top_shap_for_sample(shap_df, X, sample_id, top_n=top_n)
+        top["Sample"] = sample_id
+        rows.append(top)
+
+    if not rows:
+        return pd.DataFrame(), pd.DataFrame()
+
+    all_top = pd.concat(rows, ignore_index=True)
+    summary = (
+        all_top.groupby("SNP", as_index=False)
+        .agg(
+            Top_SHAP_Frequency=("Sample", "nunique"),
+            Mean_Absolute_SHAP=("Absolute SHAP", "mean"),
+            Mean_SHAP_Value=("SHAP Value", "mean"),
+        )
+        .sort_values(["Top_SHAP_Frequency", "Mean_Absolute_SHAP"], ascending=[False, False])
+        .head(top_n)
+        .reset_index(drop=True)
+    )
+    summary["Mean_Absolute_SHAP"] = summary["Mean_Absolute_SHAP"].astype(float).round(5)
+    summary["Mean_SHAP_Value"] = summary["Mean_SHAP_Value"].astype(float).round(5)
+    summary = attach_biology_mapping(summary, mapping_df)
+    return summary, all_top
+
+
+def count_available(series, unavailable=("Unmapped", "Not available")):
+    if series is None or len(series) == 0:
+        return 0
+    values = []
+    for item in series.dropna():
+        values.extend(_split_multi_value(item))
+    return len({v for v in values if v not in unavailable})
+
+
+def make_dynamic_shap_bar(top_df, title="Top SNP contributions for this prediction"):
+    df = top_df.sort_values("Absolute SHAP", ascending=True).copy()
+    colors = ["#b45309" if v > 0 else "#0d9488" for v in df["SHAP Value"]]
+
+    fig = pgo.Figure()
+    fig.add_trace(
+        pgo.Bar(
+            x=df["SHAP Value"],
+            y=df["SNP"],
+            orientation="h",
+            marker=dict(color=colors),
+            hovertemplate="SNP: %{y}<br>SHAP value: %{x:.5f}<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        title=title,
+        height=max(360, 24 * len(df) + 130),
+        margin=dict(l=10, r=10, t=55, b=30),
+        xaxis_title="SHAP value impact on model output",
+        yaxis_title="",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#f0f2ff", size=12),
+    )
+    fig.update_xaxes(gridcolor="rgba(255,255,255,0.08)", zeroline=True, zerolinecolor="rgba(255,255,255,0.45)")
+    fig.update_yaxes(gridcolor="rgba(255,255,255,0.05)")
+    return fig
+
+
+def build_dynamic_sankey(mapped_df, value_col="Absolute SHAP"):
+    if mapped_df is None or mapped_df.empty:
+        return None
+
+    labels = []
+    label_to_id = {}
+    sources, targets, values = [], [], []
+
+    def node(label):
+        label = _safe_text(label)
+        if label not in label_to_id:
+            label_to_id[label] = len(labels)
+            labels.append(label)
+        return label_to_id[label]
+
+    for _, row in mapped_df.iterrows():
+        snp = _safe_text(row.get("SNP"), "Unknown SNP")
+        weight = float(abs(row.get(value_col, 1.0))) if value_col in mapped_df.columns else 1.0
+        weight = max(weight, 0.0001)
+
+        genes = _split_multi_value(row.get("Gene"), "Unmapped")
+        proteins = _split_multi_value(row.get("Protein"), "Not available")
+        pathways = _split_multi_value(row.get("Pathway"), "Not available")
+
+        for gene in genes:
+            sources.append(node(snp))
+            targets.append(node(gene))
+            values.append(weight)
+
+            for protein in proteins:
+                sources.append(node(gene))
+                targets.append(node(protein))
+                values.append(weight)
+
+                for pathway in pathways:
+                    sources.append(node(protein))
+                    targets.append(node(pathway))
+                    values.append(weight)
+
+                    sources.append(node(pathway))
+                    targets.append(node("RA Risk Interpretation"))
+                    values.append(weight)
+
+    if not labels or not sources:
+        return None
 
     fig = pgo.Figure(
         data=[
             pgo.Sankey(
                 arrangement="snap",
                 node=dict(
-                    pad=20,
-                    thickness=18,
-                    line=dict(color="rgba(15, 23, 42, 0.25)", width=0.5),
+                    pad=18,
+                    thickness=16,
+                    line=dict(color="rgba(255,255,255,0.18)", width=0.4),
                     label=labels,
-                    color=[
-                        "rgba(124, 58, 237, 0.92)",
-                        "rgba(14, 165, 233, 0.90)",
-                        "rgba(20, 184, 166, 0.90)",
-                        "rgba(245, 158, 11, 0.90)",
-                        "rgba(180, 83, 9, 0.95)",
-                    ],
+                    color="rgba(14,165,233,0.82)",
                 ),
                 link=dict(
-                    source=[0, 1, 2, 3],
-                    target=[1, 2, 3, 4],
-                    value=[32, 54, 90, 90],
-                    color=[
-                        "rgba(124, 58, 237, 0.22)",
-                        "rgba(14, 165, 233, 0.22)",
-                        "rgba(20, 184, 166, 0.22)",
-                        "rgba(245, 158, 11, 0.25)",
-                    ],
+                    source=sources,
+                    target=targets,
+                    value=values,
+                    color="rgba(14,165,233,0.20)",
                 ),
             )
         ]
     )
-
     fig.update_layout(
-        height=330,
+        height=420,
         margin=dict(l=5, r=5, t=10, b=5),
-        font=dict(size=13, color="#f0f2ff"),
+        font=dict(size=11, color="#f0f2ff"),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
     )
     return fig
 
 
-def render_biological_interpretation(prob=None, sample_name=None):
-    st.markdown(
-        """
-        <style>
-        .bio-wrap {
-            margin-top: 1.1rem;
-            padding: 1.1rem 1.15rem;
-            border-radius: 14px;
-            background: linear-gradient(135deg, rgba(124,58,237,0.10), rgba(13,148,136,0.07));
-            border: 1px solid rgba(124,58,237,0.20);
-            border-left: 4px solid #2dd4bf;
-            box-shadow: 0 12px 28px rgba(0,0,0,0.16);
-        }
-        .bio-kicker {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.58rem;
-            letter-spacing: 0.14em;
-            text-transform: uppercase;
-            color: #2dd4bf;
-            font-weight: 800;
-            margin-bottom: 0.35rem;
-        }
-        .bio-title {
-            font-family: 'Fraunces', serif;
-            font-size: 1.55rem;
-            line-height: 1.15;
-            font-weight: 700;
-            color: #f0f2ff;
-            margin-bottom: 0.45rem;
-        }
-        .bio-text {
-            font-size: 0.86rem;
-            color: #8892b0;
-            line-height: 1.6;
-            margin-bottom: 0.1rem;
-        }
-        .bio-card {
-            padding: 0.85rem 0.95rem;
-            border-radius: 12px;
-            background: rgba(13, 15, 30, 0.80);
-            border: 1px solid rgba(255,255,255,0.06);
-            margin: 0.8rem 0;
-        }
-        .bio-card-title {
-            font-weight: 800;
-            color: #f0f2ff;
-            font-size: 0.95rem;
-            margin-bottom: 0.25rem;
-        }
-        .bio-small {
-            font-size: 0.80rem;
-            color: #8892b0;
-            line-height: 1.55;
-        }
-        .bio-pill {
-            display: inline-block;
-            padding: 0.22rem 0.55rem;
-            border-radius: 999px;
-            background: rgba(13,148,136,0.12);
-            border: 1px solid rgba(45,212,191,0.20);
-            color: #2dd4bf;
-            font-weight: 750;
-            margin: 0.12rem 0.16rem 0.12rem 0;
-            font-size: 0.74rem;
-        }
-        .bio-disclaimer {
-            padding: 0.85rem 0.95rem;
-            border-radius: 12px;
-            background: rgba(180,83,9,0.10);
-            border: 1px solid rgba(245,158,11,0.25);
-            color: #fbbf24;
-            font-weight: 800;
-            line-height: 1.45;
-            margin-top: 0.9rem;
-            font-size: 0.80rem;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+def render_optional_research_images():
+    base = os.path.join(os.path.dirname(__file__), "assets")
+    shap_candidates = [
+        os.path.join(base, "XGB_Additive_SHAP_Top20.png"),
+        os.path.join(base, "XGB_Additive_SHAP_beeswarm_Top20.png"),
+    ]
+    string_path = os.path.join(base, "string_network.png")
+    shap_path = next((p for p in shap_candidates if os.path.exists(p)), None)
 
-    st.markdown(
-        """
-        <div class="bio-wrap presentation-card">
-            <div class="bio-kicker">Explainable Genomic AI</div>
-            <div class="bio-title">Biological Interpretation</div>
-            <div class="bio-text">
-                The risk score is not only a number. GenomicAI links the prediction to
-                additive genotype markers coded as <b>0 / 1 / 2</b>, then summarizes the
-                biological context through SNPs, genes, protein-network evidence, and immune pathways.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    with st.expander("Optional research figures", expanded=False):
+        c1, c2 = st.columns(2)
+        with c1:
+            if shap_path:
+                st.image(shap_path, caption="Research SHAP summary figure", use_container_width=True)
+            else:
+                st.info("Optional SHAP image is not available in assets/.")
+        with c2:
+            if os.path.exists(string_path):
+                st.image(string_path, caption="Optional STRING/network figure", use_container_width=True)
+            else:
+                st.info("Optional STRING/network image is not available in assets/.")
 
-    if prob is not None:
-        st.markdown(
-            f"""
-            <div class="bio-card presentation-card">
-                <div class="bio-card-title">Current sample context</div>
-                <div class="bio-small">
-                    For <b>{sample_name if sample_name else "this sample"}</b>, the model generated a
-                    program-based genomic risk score of <b>{float(prob):.1%}</b>. The explanation below
-                    connects important SNP patterns to immune-related biology.
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+
+def render_dynamic_biological_interpretation(artifact, X, probs=None, sample_name=None, top_n=15):
+    """
+    Dynamic interpretation.
+    - If X has one row: sample-level SHAP explanation.
+    - If X has multiple rows: batch-level summary of recurring top SHAP SNPs.
+    """
+    mapping_df = load_biological_mapping()
+
+    st.markdown("""
+    <div class="bio-note presentation-card">
+      <div class="simple-kicker">Dynamic Biological Interpretation</div>
+      <p>
+        GenomicAI does not only predict RA genomic risk; it explains which additive SNP markers
+        contributed to this specific prediction and connects them to immune-related biological pathways
+        when a real mapping file is available.
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    try:
+        shap_df = compute_shap_values(artifact, X)
+    except Exception as e:
+        st.warning(f"Dynamic SHAP explanation could not be generated for this run: {e}")
+        render_optional_research_images()
+        return
+
+    if len(X) == 1:
+        sample_id = X.index[0]
+        top = get_top_shap_for_sample(shap_df, X, sample_id, top_n=top_n)
+        mapped = attach_biology_mapping(top, mapping_df)
+
+        mapped_genes = count_available(mapped["Gene"])
+        mapped_pathways = count_available(mapped["Pathway"])
+
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Top contributing SNPs", len(mapped))
+        m2.metric("Mapped candidate genes", mapped_genes)
+        m3.metric("Mapped immune pathways", mapped_pathways)
+
+        label = sample_name if sample_name else str(sample_id)
+        if probs is not None:
+            st.markdown(f"**Current sample interpretation:** `{label}` · Risk score: **{float(np.ravel(probs)[0]):.1%}**")
+        else:
+            st.markdown(f"**Current sample interpretation:** `{label}`")
+
+        display_cols = [
+            "SNP", "Additive Encoding", "SHAP Value", "Absolute SHAP",
+            "Contribution Direction", "Gene", "Protein", "Pathway"
+        ]
+        st.dataframe(mapped[display_cols], use_container_width=True, hide_index=True)
+        st.plotly_chart(make_dynamic_shap_bar(mapped), use_container_width=True)
+
+        sankey = build_dynamic_sankey(mapped, value_col="Absolute SHAP")
+        if sankey is not None:
+            st.markdown("#### Dynamic SNP → Gene → Protein → Pathway interpretation")
+            st.plotly_chart(sankey, use_container_width=True)
+        else:
+            st.info("Sankey diagram is not available because no interpretable mapping could be built.")
+
     else:
-        st.markdown(
-            """
-            <div class="bio-card presentation-card">
-                <div class="bio-card-title">Project-level interpretation</div>
-                <div class="bio-small">
-                    For uploaded batches, this section summarizes the biological interpretation layer of the project.
-                    It does not assign one probability to the whole file; each row keeps its own risk score in the results table.
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        summary, all_top = summarize_batch_shap(shap_df, X, mapping_df, top_n=top_n)
+        mapped_genes = count_available(summary["Gene"]) if not summary.empty else 0
+        mapped_pathways = count_available(summary["Pathway"]) if not summary.empty else 0
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Prioritized SNPs", "32")
-    c2.metric("Candidate Genes", "54")
-    c3.metric("Network Nodes", "90")
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Samples interpreted", len(X))
+        m2.metric("Recurring top SNPs", len(summary))
+        m3.metric("Mapped immune pathways", mapped_pathways)
 
-    st.markdown("#### Top SNPs used in the interpretation layer")
+        st.markdown("**Batch-level interpretation:** recurring SNPs among the top SHAP contributors across uploaded samples.")
+        display_cols = [
+            "SNP", "Top_SHAP_Frequency", "Mean_Absolute_SHAP", "Mean_SHAP_Value",
+            "Gene", "Protein", "Pathway"
+        ]
+        st.dataframe(summary[display_cols], use_container_width=True, hide_index=True)
 
-    top_snps = pd.DataFrame(
-        [
-            ["rs660895", "0 / 1 / 2", "Dominant HLA-region signal; antigen presentation context"],
-            ["rs6910071", "0 / 1 / 2", "Prioritized immune/genomic marker"],
-            ["rs13192471", "0 / 1 / 2", "HLA-related adaptive immune context"],
-            ["rs17533090", "0 / 1 / 2", "Prioritized RA-associated SNP signal"],
-            ["rs1182531", "0 / 1 / 2", "Candidate locus contributing to explanation"],
-        ],
-        columns=["SNP", "Additive Encoding", "Biological Context"],
-    )
-    st.dataframe(top_snps, use_container_width=True, hide_index=True)
+        if not summary.empty:
+            batch_bar = summary.rename(columns={"Mean_Absolute_SHAP": "Absolute SHAP", "Mean_SHAP_Value": "SHAP Value"})
+            st.plotly_chart(make_dynamic_shap_bar(batch_bar, title="Recurring SNPs by mean absolute SHAP across uploaded samples"), use_container_width=True)
+            sankey = build_dynamic_sankey(batch_bar, value_col="Absolute SHAP")
+            if sankey is not None:
+                st.markdown("#### Dynamic batch SNP → Gene → Protein → Pathway interpretation")
+                st.plotly_chart(sankey, use_container_width=True)
 
-    st.markdown(
-        """
-        <div class="bio-card presentation-card">
-            <div class="bio-card-title">SHAP explanation</div>
-            <div class="bio-small">
-                SHAP highlights which SNP features contributed most to the model output.
-                It explains model behavior, not medical diagnosis and not biological causality.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    if mapping_df.empty:
+        st.info("No biological mapping CSV was found. SHAP-based Top SNPs are dynamic; gene/protein/pathway fields are shown as Unmapped / Not available until a real mapping file is added.")
 
-    shap_img = _first_existing_asset([
-        "XGB_Additive_SHAP_Top20.png",
-        "XGB_Additive_SHAP_beeswarm_Top20.png",
-    ])
-    string_img = _first_existing_asset(["string_network.png"])
+    render_optional_research_images()
 
-    img_col1, img_col2 = st.columns(2)
-    with img_col1:
-        if shap_img:
-            st.image(shap_img, caption="Top SNPs by SHAP importance", use_container_width=True)
-        else:
-            st.info("SHAP figure will appear here when added to assets/.")
-
-    with img_col2:
-        if string_img:
-            st.image(string_img, caption="Candidate gene/protein network", use_container_width=True)
-        else:
-            st.info("STRING network figure will appear here when added to assets/.")
-
-    st.markdown("#### Prioritized SNPs → Candidate Genes → Proteins/STRING Network → Immune Pathways → RA Risk Interpretation")
-    st.plotly_chart(build_biological_sankey(), use_container_width=True)
-
-    st.markdown(
-        """
-        <div class="bio-card presentation-card">
-            <div class="bio-card-title">Biological meaning</div>
-            <div class="bio-small">
-                The interpretation layer points to immune-related biology, including:
-                <br><br>
-                <span class="bio-pill">antigen processing and presentation</span>
-                <span class="bio-pill">T-cell receptor signaling</span>
-                <span class="bio-pill">interferon-gamma pathway</span>
-                <span class="bio-pill">immune-related biology</span>
-                <br><br>
-                This supports a pitch-friendly message: the model produces a genomic risk estimate,
-                then connects important additive SNP patterns to biologically meaningful immune mechanisms.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        """
-        <div class="bio-disclaimer presentation-card">
-            This is a research and educational prototype, not a medical diagnosis.
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.markdown(f"""
+    <div class="disclaimer-card presentation-card">
+      <div class="dc-kicker">Research disclaimer</div>
+      <div class="dc-body">{DISCLAIMER_TEXT}</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # ── State ─────────────────────────────────────────────────────
 if "page" not in st.session_state:
@@ -409,15 +546,25 @@ if page == "Home":
     </div>
     """, unsafe_allow_html=True)
 
-    render_disclaimer()
+    st.markdown("""
+    <div class="disclaimer-card presentation-card">
+      <div class="dc-kicker">The Problem</div>
+      <div class="dc-body">
+        Rheumatoid arthritis is often detected after symptoms appear, when joint inflammation
+        and tissue damage may have already started. Early risk awareness remains difficult
+        before clear disease progression, especially when genomic information is not used
+        to support research-grade risk stratification.
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     st.markdown("""
     <div class="simple-intro presentation-card">
-      <div class="simple-kicker">The idea in simple words</div>
+      <div class="simple-kicker">Our Solution</div>
       <p>
-        Rheumatoid arthritis can be discovered late, and delays can lead to joint damage.
-        This project uses small genetic markers to estimate whether a person's genetic
-        pattern looks closer to higher-risk or lower-risk examples learned by the program.
+        GenomicAI uses additive genomic SNP encoding <strong>0 / 1 / 2</strong> and machine learning
+        to estimate a program-based rheumatoid arthritis risk score. Instead of stopping at
+        prediction, the app dynamically explains which genetic markers contributed to the result.
       </p>
     </div>
     """, unsafe_allow_html=True)
@@ -824,10 +971,12 @@ elif page == "Predict":
                 </div>
                 """, unsafe_allow_html=True)
 
-                # Biological Interpretation appears directly after the risk gauge for the pitch video.
-                render_biological_interpretation(
-                    prob=prob,
+                render_dynamic_biological_interpretation(
+                    model_artifact,
+                    feat,
+                    probs=[prob],
                     sample_name=selected_label,
+                    top_n=15,
                 )
 
                 if exp is not None:
@@ -916,17 +1065,21 @@ elif page == "Predict":
                             height=min(480, 60 + len(res)*38),
                         )
 
-                        # For one uploaded sample: show current sample context.
-                        # For multiple samples: show project-level interpretation only.
-                        if len(res) == 1:
-                            render_biological_interpretation(
-                                prob=float(probs[0]),
-                                sample_name=str(res["Sample"].iloc[0]),
+                        if len(feat) == 1:
+                            render_dynamic_biological_interpretation(
+                                model_artifact,
+                                feat,
+                                probs=probs,
+                                sample_name=str(feat.index[0]),
+                                top_n=15,
                             )
                         else:
-                            render_biological_interpretation(
-                                prob=None,
+                            render_dynamic_biological_interpretation(
+                                model_artifact,
+                                feat,
+                                probs=probs,
                                 sample_name="uploaded batch",
+                                top_n=15,
                             )
             except Exception as e:
                 st.error(f"Error reading file: {e}")
