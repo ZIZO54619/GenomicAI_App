@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import joblib, os
-import plotly.graph_objects as go
+import plotly.graph_objects as pgo
 
 CLASSIFICATION_THRESHOLD = 0.50
 DISCLAIMER_TEXT = (
@@ -97,9 +97,9 @@ def build_biological_sankey():
         "RA Risk Interpretation",
     ]
 
-    fig = go.Figure(
+    fig = pgo.Figure(
         data=[
-            go.Sankey(
+            pgo.Sankey(
                 arrangement="snap",
                 node=dict(
                     pad=20,
