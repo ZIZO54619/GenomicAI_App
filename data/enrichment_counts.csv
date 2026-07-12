@@ -1,0 +1,4 @@
+Gene_group,GO_BP,KEGG,Reactome,Disease
+All Direct GWAS-Mapped Genes,29,26,9,258
+HLA Genes,65,24,13,653
+Non-HLA Genes,0,0,0,67

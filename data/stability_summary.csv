@@ -1,0 +1,9 @@
+K,Mean_Jaccard,SD_Jaccard,Stable_SNP_Count,Decision
+5,0.4696,0.1402,2,Evaluated
+10,0.5480,0.1230,6,Evaluated
+15,0.6537,0.0932,11,Evaluated
+20,0.7388,0.0729,15,Historical K20
+25,0.7396,0.0611,22,Selected
+30,0.7153,0.0595,23,Evaluated
+40,0.7196,0.0449,30,Evaluated
+50,0.7064,0.0450,37,Evaluated

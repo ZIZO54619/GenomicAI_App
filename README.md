@@ -1,61 +1,62 @@
-# GenomicAI: Rheumatoid Arthritis Genomic Risk Demo
+# GenomicAI — RA Genomic Machine-Learning Research Dashboard
 
-Interactive Streamlit research demo for SNP-based rheumatoid arthritis risk prediction using a pre-trained XGBoost model.
+A professional Streamlit dashboard aligned to the final GenomicAI graduation book.
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Open%20App-2ea44f?style=for-the-badge)](https://genomicaiapp1.streamlit.app/)
+## What the application contains
 
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/cd94c426-5f2b-4850-87ef-42a23794f6be" alt="GenomicAI overview banner showing the user workflow from SNP file upload to AI analysis, RA risk score, and user-friendly result" width="100%">
-</p>
+- **Overview:** end-to-end analytical workflow and final project snapshot.
+- **Prediction:** strict 212-SNP additive-input validation, frozen XGBoost prediction, downloadable template, batch output, and local XGBoost SHAP contributions.
+- **Model Validation:** complete 16-combination benchmark, interactive ROC-AUC/PR-AUC model map, repeated nested cross-validation + Optuna explanation, ranking table, and final model card.
+- **Explainable AI:** global SHAP ranking, K-selection analysis, final 22 stable SNPs, genomic distribution, and top K25 SHAP interactions.
+- **Biological Interpretation:** direct GWAS mapping, HLA/non-HLA gene sets, enrichment counts, representative terms, and final biological interpretation.
+- **About:** team, advisors, scope, limitations, technology stack, and responsible-use statement.
 
-## Why this project matters
+## Scientific scope
 
-Rheumatoid arthritis can cause progressive and irreversible joint damage if detected late.  
-This project presents a genomics-focused machine learning demo that transforms selected SNP features into an accessible research-grade risk score through a simple web interface.
+The deployed model is the final **XGBoost Additive** classifier using **212 additive SNP features**. Reported performance is internal to the NARAC cohort:
 
-This repository is presented as a **research demo**, not as a clinical diagnostic tool.
+- ROC-AUC: **0.9220 ± 0.0142**
+- PR-AUC: **0.8914 ± 0.0203**
+- F1: **0.8161**
+- MCC: **0.6765**
 
-## Dataset / data source
+The final interpretation layer uses **K = 25**, an outer-fold selection-frequency threshold of **0.80**, and **22 stable SNPs**. The focused interaction screen contains 231 possible pairs; the dashboard displays the top 15. Direct GWAS Catalog mapping yielded 29 genes: 5 HLA and 24 non-HLA.
 
-This application is based on a genotype-driven rheumatoid arthritis prediction workflow.
+## Responsible-use boundary
 
-Public repository scope:
-- Streamlit inference app
-- demo interface
-- model-loading workflow
-- local setup files
+This is a **research prototype**, not a medical device. Its outputs must not be used for clinical diagnosis, treatment selection, or validated individual genetic-risk communication. SHAP values, interaction magnitudes, mapped genes, and enriched terms describe model behavior and annotation context; they do not prove causality.
 
-Not redistributed here:
-- raw genotype files
-- patient-level genomic datasets
-- restricted clinical metadata
-- full raw preprocessing pipeline
+## Local run
 
-## Methods / workflow
+```bash
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+streamlit run app.py
+```
 
-The current app reflects the following high-level workflow:
+## Streamlit Community Cloud deployment
 
-1. Upload a genomic/SNP-based input file.
-2. Align the uploaded data to the trained feature schema.
-3. Run a pre-trained XGBoost model.
-4. Generate an RA risk score and class prediction.
-5. Display the result through a simple, user-friendly dashboard.
+1. Push this repository to GitHub.
+2. In Streamlit Community Cloud, select the repository and set the main file to `app.py`.
+3. The included `runtime.txt` requests Python 3.12.
+4. No secrets are required.
 
-The app content currently references the following feature reduction path:
-- 531,689 raw SNPs
-- 313 rheumatoid arthritis-associated markers after refinement
-- 212 final model features used for inference
+## Input CSV format
 
-## Repository structure
+- One row per sample.
+- All 212 required rsID columns must be present.
+- Additive genotype values must be `0`, `1`, or `2`.
+- Optional identifier columns: `sample_id`, `sample`, or `id`.
+- Optional expected-label columns: `label`, `ExpectedLabel`, `phenotype`, or `target`.
+- Download a valid template directly from the Prediction page.
 
-```text
-GenomicAI_App/
-├─ app.py                    # Main Streamlit app
-├─ requirements.txt          # Python dependencies
-├─ assets/
-│  └─ style.css             # App styling
-├─ data/
-│  └─ demo_samples.csv      # Example inputs for demo mode
-├─ models/
-│  └─ xgboost_model.joblib  # Expected trained model artifact
-└─ README.md
+## Model files
+
+- `models/xgboost_model.json`: native XGBoost model used by default.
+- `models/model_metadata.json`: ordered 212-feature list and deployment metadata.
+- `models/xgboost_model.joblib`: retained as a backward-compatible archive/fallback.
+
+## Data provenance
+
+Dashboard tables are aligned to the final graduation book. See `data/DATA_PROVENANCE.md` for the K25 metadata note and the relationship between the final-book tables and the original K25 provenance package retained under `data/source_k25/`.

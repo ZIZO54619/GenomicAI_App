@@ -1,0 +1,9 @@
+K,mean_jaccard,SD_jaccard,stable_snp_count,decision
+5,0.4695767195767195,0.1401991608702233,2,Evaluated candidate; not selected
+10,0.547992747992748,0.1230264519034853,6,Evaluated candidate; not selected
+15,0.6536776433061263,0.0932299626257358,11,Evaluated candidate; not selected
+20,0.7388267770876465,0.0729438992893975,15,Historical K20 setting; not final biological layer
+25,0.7395907168493993,0.0611319522984493,22,Final selected setting
+30,0.7152701171277024,0.0595350198425132,23,Evaluated candidate; not selected
+40,0.7195547411537897,0.0449286256247917,30,Evaluated candidate; not selected
+50,0.7063821662349388,0.045031952703041,37,Evaluated candidate; not selected

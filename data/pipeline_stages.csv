@@ -1,0 +1,9 @@
+Stage,Title,Primary_output
+1,Raw NARAC genotype data,"2,062 individuals · 531,689 autosomal SNPs"
+2,Structural audit,"Validated PED/MAP alignment and genotype tokens"
+3,GWAS Catalog-guided feature construction,"2,193 RA-unique rsIDs · 314 NARAC-compatible SNPs"
+4,Targeted Beagle imputation,"313-SNP panel · 10,086 missing calls resolved"
+5,Genotype transformation,"212 additive features · 636 one-hot features"
+6,Repeated nested cross-validation,"8 models × 2 encodings · 10 outer evaluations each"
+7,Final model selection,"XGBoost Additive · ROC-AUC 0.9220 · PR-AUC 0.8914"
+8,Explainability and biology,"22 stable SNPs · 231 pairs · 29 direct mapped genes"

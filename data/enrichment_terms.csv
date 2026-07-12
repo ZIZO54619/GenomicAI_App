@@ -1,0 +1,10 @@
+Gene_group,Database,Representative_term,Adjusted_p_value,Overlap,Contributing_genes
+HLA Genes,GO_BP,interferon-gamma-mediated signaling pathway (GO:0060333),5.00e-08,4/68,HLA-DRA; HLA-DQA1; HLA-DRB1; HLA-DQB1
+HLA Genes,GO_BP,antigen processing and presentation of exogenous peptide antigen via MHC class II (GO:0019886),6.77e-08,4/98,HLA-DRA; HLA-DQA1; HLA-DRB1; HLA-DQB1
+HLA Genes,KEGG,Rheumatoid arthritis,3.86e-09,4/91,HLA-DRA; HLA-DQA1; HLA-DRB1; HLA-DQB1
+HLA Genes,Reactome,PD-1 Signaling (R-HSA-389948),4.32e-08,3/21,HLA-DRA; HLA-DQA1; HLA-DRB1
+HLA Genes,Disease,Rheumatoid arthritis,1.76e-06,4/310,HLA-DRA; HLA-DQA1; HLA-DRB1; HLA-DQB1
+HLA Genes,Disease,Seropositive rheumatoid arthritis,5.16e-05,2/10,HLA-DRB1; HLA-DQB1
+All Direct GWAS-Mapped Genes,KEGG,Rheumatoid arthritis,3.83e-05,4/91,HLA-DRA; HLA-DQA1; HLA-DRB1; HLA-DQB1
+All Direct GWAS-Mapped Genes,Disease,Rheumatoid Arthritis,2.65e-03,11/1833,TBX1; CTIF; COL2A1; SRC; PHACTR3; HLA-DRA; HLA-DQA1; HLA-DRB1; TELO2; SENP1; HLA-DQB1
+Non-HLA Genes,Disease,Occipital myelomeningocele,9.64e-03,2/10,TBX1; GP1BB
